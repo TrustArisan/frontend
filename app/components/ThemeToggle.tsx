@@ -7,7 +7,7 @@ import { motion } from 'framer-motion';
 
 export default function ThemeToggle({ className = '' }: { className?: string }) {
   const [mounted, setMounted] = useState(false);
-  const { theme, setTheme } = useTheme();
+  const { theme = 'light', setTheme } = useTheme();
 
   // Ensure we're on the client before rendering
   useEffect(() => {
@@ -19,7 +19,7 @@ export default function ThemeToggle({ className = '' }: { className?: string }) 
   }
 
   const toggleTheme = () => {
-    setTheme(theme === 'dark' ? 'light' : 'dark');
+    setTheme(theme === 'light' ? 'dark' : 'light');
   };
 
   return (
