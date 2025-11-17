@@ -7,7 +7,8 @@ import {
 } from 'react';
 import { 
   MessageCircleMore, 
-  UsersRound
+  UsersRound,
+  CirclePlus
 } from 'lucide-react';
 import ThemeToggle from './ThemeToggle';
 import Link from 'next/link';
@@ -105,11 +106,11 @@ export default function Dashboard() {
           <h2 className="text-2xl font-semibold">Available Groups</h2>
           <Link href="/creategroup">
             <motion.button
-              className="px-5 py-3 rounded-full bg-primary text-primary-foreground font-medium text-md hover:bg-primary/90 transition-colors border border-[hsl(var(--foreground))]/10 hover:shadow-md"
+              className="flex px-5 py-3 rounded-full bg-primary text-primary-foreground font-medium text-md hover:bg-primary/90 transition-colors border border-[hsl(var(--foreground))]/10 hover:shadow-md"
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
             >
-              Create Group
+              <CirclePlus className='me-2 px-0.5'/> Create Group
             </motion.button>
           </Link>
         </div>

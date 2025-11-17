@@ -2,16 +2,21 @@
 'use client';
 
 import React, { useState, FormEvent } from 'react';
+import { useRouter } from 'next/navigation';
 import { useCreateGroup } from '@/app/hooks/useCreateGroup';
 import { useAccount } from 'wagmi';
 import { motion } from 'framer-motion';
-import { ChevronLeft } from 'lucide-react';
+import { 
+  ChevronLeft,
+  Shuffle
+} from 'lucide-react';
 import ThemeToggle from '@/app/components/ThemeToggle';
 import Link from 'next/link';
 
 export default function CreateGroupPage() {
+  const router = useRouter();
   const { address, isConnected } = useAccount();
-  const { createGroup, isPending, error, transactionHash } = useCreateGroup();
+  const { createGroup, isPending, error } = useCreateGroup();
 
   // Form state
   const [formData, setFormData] = useState({
@@ -24,15 +29,45 @@ export default function CreateGroupPage() {
   });
 
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
+  const [transactionHash, setTransactionHash] = useState('');
+  const [isWei, setIsWei] = useState(true);
+
+  // Toggle between Wei and ETH
+  const toggleWeiEth = () => {
+    if (formData.contributionAmountInWei) {
+      try {
+        const currentValue = formData.contributionAmountInWei;
+        const newValue = isWei 
+          ? (parseFloat(currentValue) / 1e18).toString()
+          : (parseFloat(currentValue) * 1e18).toString();
+        
+        setFormData(prev => ({
+          ...prev,
+          contributionAmountInWei: newValue
+        }));
+      } catch (error) {
+        console.error('Error toggling between Wei and ETH:', error);
+      }
+    }
+    setIsWei(!isWei);
+  };
 
   // Handle input changes
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type } = e.target;
     
-    setFormData(prev => ({
-      ...prev,
-      [name]: type === 'number' ? Number(value) : value,
-    }));
+    if (name === 'contributionAmountInWei') {
+      // For contribution amount, we'll store the raw value and handle display separately
+      setFormData(prev => ({
+        ...prev,
+        [name]: value === '' ? '' : value
+      }));
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        [name]: type === 'number' ? Number(value) : value,
+      }));
+    }
 
     // Clear validation error for this field
     if (validationErrors[name]) {
@@ -68,12 +103,28 @@ export default function CreateGroupPage() {
       errors.coordinatorCommissionPercentage = 'Commission must be between 1-50%';
     }
 
-    if (!formData.contributionAmountInWei || BigInt(formData.contributionAmountInWei) === BigInt(0)) {
+    if (!formData.contributionAmountInWei) {
       errors.contributionAmountInWei = 'Contribution amount is required';
+    } else {
+      try {
+        const amount = isWei 
+          ? formData.contributionAmountInWei 
+          : (parseFloat(formData.contributionAmountInWei) * 1e18).toString();
+        
+        if (BigInt(amount) <= BigInt(0)) {
+          errors.contributionAmountInWei = 'Contribution amount must be greater than 0';
+        }
+      } catch (error) {
+        errors.contributionAmountInWei = 'Invalid contribution amount';
+      }
     }
 
     if (formData.prizePercentage <= 0 || formData.prizePercentage > 100) {
       errors.prizePercentage = 'Prize percentage must be between 1-100%';
+    }
+
+    if (formData.coordinatorCommissionPercentage + formData.prizePercentage > 100) {
+      errors.percentageTooBig = 'Commission + Prize percentage is too big!';
     }
 
     setValidationErrors(errors);
@@ -88,8 +139,18 @@ export default function CreateGroupPage() {
       return;
     }
 
+    // Convert to Wei if in ETH mode
+    let submissionData = { ...formData };
+    if (!isWei && submissionData.contributionAmountInWei) {
+      submissionData = {
+        ...submissionData,
+        contributionAmountInWei: (parseFloat(submissionData.contributionAmountInWei) * 1e18).toString()
+      };
+    }
+
     try {
-      await createGroup(formData);
+      // console.log(submissionData);
+      await createGroup(submissionData);
       // Reset form on success
       setFormData({
         title: '',
@@ -99,6 +160,8 @@ export default function CreateGroupPage() {
         contributionAmountInWei: '',
         prizePercentage: 0,
       });
+
+      router.push('/');
     } catch (err) {
       console.error('Form submission error:', err);
     }
@@ -224,7 +287,7 @@ export default function CreateGroupPage() {
             </div>
 
             {/* Two Column Layout for Percentage Inputs */}
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-x-4">
               {/* Coordinator Commission Percentage */}
               <div>
                 <label htmlFor="coordinatorCommissionPercentage" className="block text-sm font-medium text-foreground mb-2">
@@ -274,28 +337,46 @@ export default function CreateGroupPage() {
                   <p className="text-destructive text-sm mt-1">{validationErrors.prizePercentage}</p>
                 )}
               </div>
+
+              {/* Warning Label */}
+              <p className='text-slate-400 text-xs mt-1'>Commission + Prize must equal to 100% or less</p>
             </div>
 
             {/* Contribution Amount */}
             <div>
-              <label htmlFor="contributionAmountInWei" className="block text-sm font-medium text-foreground mb-2">
-                Contribution Amount (in Wei) *
-              </label>
+              <div className="flex justify-between items-center mb-2">
+                <label htmlFor="contributionAmountInWei" className="block text-sm font-medium text-foreground">
+                  Contribution Amount ({isWei ? 'Wei' : 'ETH'}) *
+                </label>
+              </div>
               <div className="flex items-center">
                 <input
                   id="contributionAmountInWei"
                   name="contributionAmountInWei"
-                  type="text"
+                  type="number"
+                  step={isWei ? '1' : '0.000000000000000001'}
                   value={formData.contributionAmountInWei}
                   onChange={handleInputChange}
-                  placeholder="e.g., 1000000000000000000 (1 ETH)"
+                  placeholder={isWei 
+                    ? `e.g., 1000000000000000000 ${isWei ? 'Wei' : 'ETH'}` 
+                    : `e.g., 1.0 ${isWei ? 'Wei' : 'ETH'}`}
                   className={`w-full px-4 py-2 bg-background border border-[hsl(var(--foreground))]/20 rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring transition ${
                     validationErrors.contributionAmountInWei ? 'border-destructive' : 'border-input'
                   }`}
                 />
-                <span className="ml-2 text-slate-400 text-sm whitespace-nowrap">Wei</span>
+                <motion.button
+                  type='button'
+                  onClick={toggleWeiEth}
+                  className="flex ms-3 px-3 py-2 rounded-md bg-primary text-primary-foreground font-medium text-xs hover:bg-primary/90 transition-colors border border-[hsl(var(--foreground))]/10 hover:shadow-md"
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  <Shuffle className='px-0.5'/>
+                </motion.button>
               </div>
-              <p className="text-slate-400 text-xs mt-1">1 ETH = 1000000000000000000 Wei</p>
+              <p className="text-muted-foreground text-xs mt-1">
+                1 ETH = 1,000,000,000,000,000,000 Wei
+              </p>
               {validationErrors.contributionAmountInWei && (
                 <p className="text-destructive text-sm mt-1">{validationErrors.contributionAmountInWei}</p>
               )}
