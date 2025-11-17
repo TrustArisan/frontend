@@ -13,8 +13,9 @@ import {
 import ThemeToggle from './ThemeToggle';
 import Link from 'next/link';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
-import { useGroupsCount } from '../hooks/useGroupCount';
-import { useGroupAddresses } from '../hooks/useGroupAddresses';
+import { useGroupsCount } from '@/app/hooks/useGroupCount';
+import { useGroupAddresses } from '@/app/hooks/useGroupAddresses';
+import { useGroupsList } from '@/app/hooks/useGroupList';
 
 interface Group {
   id: string;
@@ -30,6 +31,7 @@ export default function Dashboard() {
   const [isLoading, setIsLoading] = useState(true);
   const { count, isLoading:isLoadingGroup, error } = useGroupsCount();
   const { addresses, isLoading:isLoadingAddresses } = useGroupAddresses();
+  const { groups: groupsList, isLoading: isLoadingGroupsList, error: errorGroupsList } = useGroupsList();
 
   useEffect(() => {
     // Simulate API/contract call
@@ -115,16 +117,16 @@ export default function Dashboard() {
           </Link>
         </div>
 
-        {isLoading ? (
+        {isLoadingGroupsList ? (
           <div className="flex justify-center items-center h-64">
             <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
           </div>
         ) : (
           <div>
             <p className='mb-8 text-lg'>Total: {count}</p>
+            {errorGroupsList && <div>Error: {errorGroupsList}</div>}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {/* <p>{addresses}</p> */}
-              {groups.map((group) => (
+              {groupsList.map((group) => (
                 <motion.div
                   key={group.id}
                   className="rounded-xl border border-[hsl(var(--foreground))]/20 p-6 hover:shadow-lg transition-shadow"

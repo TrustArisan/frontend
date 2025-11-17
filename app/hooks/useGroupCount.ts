@@ -1,7 +1,7 @@
 'use client';
 
 import { useReadContract } from 'wagmi';
-import { FACTORY_ABI } from '../utils/TrustArisanABI';
+import { FACTORY_ABI } from '@/app/utils/TrustArisanFactoryABI';
 import { FACTORY_ADDRESS } from '../utils/ContractConfig';
 
 export function useGroupsCount() {
