@@ -14,8 +14,6 @@ import Link from 'next/link';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { useGroupsCount } from '../hooks/useGroupCount';
 import { useGroupAddresses } from '../hooks/useGroupAddresses';
-import { useCreateGroup } from '../hooks/useCreateGroup';
-import { parseEther } from 'ethers';
 
 interface Group {
   id: string;
@@ -105,13 +103,15 @@ export default function Dashboard() {
       <main className="container mx-auto px-4 py-8">
         <div className="flex justify-between items-center">
           <h2 className="text-2xl font-semibold">Available Groups</h2>
-          <motion.button
-            className="px-5 py-3 rounded-full bg-primary text-primary-foreground font-medium text-md hover:bg-primary/90 transition-colors border border-[hsl(var(--foreground))]/10 hover:shadow-md"
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-          >
-            Create Group
-          </motion.button>
+          <Link href="/creategroup">
+            <motion.button
+              className="px-5 py-3 rounded-full bg-primary text-primary-foreground font-medium text-md hover:bg-primary/90 transition-colors border border-[hsl(var(--foreground))]/10 hover:shadow-md"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              Create Group
+            </motion.button>
+          </Link>
         </div>
 
         {isLoading ? (
@@ -146,14 +146,14 @@ export default function Dashboard() {
                     className='flex justify-between'
                   >
                     <motion.button
-                      className="flex grow px-5 py-3 rounded-full bg-primary text-primary-foreground font-medium text-md hover:bg-primary/90 transition-colors border border-[hsl(var(--foreground))]/10 hover:shadow-md"
+                      className="flex grow justify-center px-5 py-3 rounded-full bg-primary text-primary-foreground font-medium text-md hover:bg-primary/90 transition-colors border border-[hsl(var(--foreground))]/10 hover:shadow-md"
                       whileHover={{ scale: 1.05 }}
                       whileTap={{ scale: 0.95 }}
                     >
                       <UsersRound className='me-2 font-thin px-0.5'/> Join Group
                     </motion.button>
                     <motion.button
-                      className="flex grow ms-2 px-5 py-3 rounded-full bg-primary text-primary-foreground font-medium text-md hover:bg-primary/90 transition-colors border border-[hsl(var(--foreground))]/10 hover:shadow-md"
+                      className="flex grow justify-center ms-2 px-5 py-3 rounded-full bg-primary text-primary-foreground font-medium text-md hover:bg-primary/90 transition-colors border border-[hsl(var(--foreground))]/10 hover:shadow-md"
                       whileHover={{ scale: 1.05 }}
                       whileTap={{ scale: 0.95 }}
                     >
