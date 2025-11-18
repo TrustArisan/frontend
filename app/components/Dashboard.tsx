@@ -11,6 +11,7 @@ import Link from 'next/link';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { useGroupsCount } from '@/app/hooks/useGroupCount';
 import { useGroupsList } from '@/app/hooks/useGroupList';
+import { Avatar } from '@/app/components/Avatar';
 
 export default function Dashboard() {
   const { count, isLoading:isLoadingGroup, error } = useGroupsCount();
@@ -77,19 +78,22 @@ export default function Dashboard() {
                 <motion.div
                   key={group.id}
                   className="rounded-xl border border-[hsl(var(--foreground))]/20 p-6 hover:shadow-lg transition-shadow"
-                  whileHover={{ y: -4 }}
-                  whileTap={{ scale: 0.95 }}
                 >
-                  <h3 className="text-xl font-semibold mb-2">{group.title}</h3>
-                  <p className="text-muted-foreground">
-                    Coordinator: {group.coordinator}
-                  </p>
-                  <div className="w-full bg-secondary/20 rounded-full mb-4">
-                    <div 
-                      className="bg-primary h-full rounded-full truncate" 
-                    >Groupchat: {group.chatLink} </div>
+                  <div className='flex md:flex-row flex-col items-center place-items-center justify-items-center mb-4'>
+                    <Avatar name={group.title} size='xxl' className='md:me-4 md:mb-0 mb-4'/>
+                    <div>
+                      <h3 className="flex text-xl font-semibold md:mb-2 md:justify-start justify-center">{group.title}</h3>
+                      <p className="flex text-muted-foreground md:justify-start justify-center">
+                        Coordinator: {group.coordinator}
+                      </p>
+                      <div className="flex bg-secondary/20 rounded-full md:justify-start justify-center">
+                        <div 
+                          className="bg-primary h-full rounded-full truncate" 
+                        >Groupchat: {group.chatLink} </div>
+                      </div>
+                    </div>
                   </div>
-                  <p className="text-sm text-muted-foreground mb-2">
+                  <p className="text-sm text-muted-foreground mb-2 md:text-start text-center">
                     <span className='underline'>{group.currentSize}</span> of {group.size} members
                   </p>
                   <motion.div
@@ -102,13 +106,15 @@ export default function Dashboard() {
                     >
                       <UsersRound className='me-2 font-thin px-0.5'/> Join Group
                     </motion.button>
-                    <motion.button
-                      className="flex grow justify-center ms-2 px-5 py-3 rounded-full bg-primary text-primary-foreground font-medium text-md hover:bg-primary/90 transition-colors border border-[hsl(var(--foreground))]/10 hover:shadow-md"
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                    >
-                      <MessageCircleMore className='me-2 font-thin px-0.5'/> Join Chat
-                    </motion.button>
+                    <Link href={group.chatLink} className='flex grow'>
+                      <motion.button
+                        className="flex grow justify-center ms-2 px-5 py-3 rounded-full bg-primary text-primary-foreground font-medium text-md hover:bg-primary/90 transition-colors border border-[hsl(var(--foreground))]/10 hover:shadow-md"
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                      >
+                        <MessageCircleMore className='me-2 font-thin px-0.5'/> Join Chat
+                      </motion.button>
+                    </Link>
                   </motion.div>
                 </motion.div>
               ))}
