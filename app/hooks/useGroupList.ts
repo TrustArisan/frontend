@@ -88,6 +88,7 @@ export function useGroupsList() {
 
   return { 
     groups, 
+    count: groups.length,
     isLoading, 
     error, 
     refetch: fetchGroups,

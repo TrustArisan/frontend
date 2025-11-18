@@ -3,20 +3,18 @@
 import { motion } from 'framer-motion';
 import { 
   MessageCircleMore, 
-  UsersRound,
+  Search,
   CirclePlus,
   RotateCcw
 } from 'lucide-react';
 import ThemeToggle from './ThemeToggle';
 import Link from 'next/link';
-import { ConnectButton } from '@rainbow-me/rainbowkit';
-import { useGroupsCount } from '@/app/hooks/useGroupCount';
+import Header from '@/app/components/Header';
 import { useGroupsList } from '@/app/hooks/useGroupList';
 import { Avatar } from '@/app/components/Avatar';
 
 export default function Dashboard() {
-  const { count, isLoading:isLoadingGroup, error } = useGroupsCount();
-  const { groups: groupsList, isLoading: isLoadingGroupsList, error: errorGroupsList, refetch } = useGroupsList();
+  const { groups: groupsList, count, isLoading: isLoadingGroupsList, error: errorGroupsList, refetch } = useGroupsList();
 
   async function updateGroupsLists() {
     await refetch();
@@ -30,32 +28,10 @@ export default function Dashboard() {
       transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
     >
       {/* Header */}
-      <header className="border-b border-b-[hsl(var(--foreground))]/10">
-        <div className="container mx-auto px-4 py-4 flex justify-between items-center">
-          <h1 className="text-2xl font-bold bg-linear-to-r from-cyan-500 to-blue-500/80 bg-clip-text text-transparent">
-            TrustArisan
-          </h1>
-          <div className="flex items-center gap-3 space-x-4">
-            <ConnectButton 
-              showBalance={{
-                smallScreen: false, 
-                largeScreen: true
-              }} 
-              accountStatus={{
-                smallScreen: "avatar",
-                largeScreen: "full"
-              }} 
-              chainStatus={{
-                smallScreen: "icon",
-                largeScreen: "full"
-              }}
-            />
-          </div>
-        </div>
-      </header>
+      <Header />
 
       {/* Main Content */}
-      <main className="container mx-auto px-4 py-8">
+      <main className="container mx-auto px-4 py-8 min-h-screen">
         <div className="flex justify-between items-center">
           <h2 className="text-2xl font-semibold">Available Groups</h2>
           <div className='flex gap-2'>
@@ -112,16 +88,16 @@ export default function Dashboard() {
                   <p className="text-sm text-muted-foreground mb-2 md:text-start text-center">
                     <span className='underline'>{group.currentSize}</span> of {group.size} members
                   </p>
-                  <motion.div
-                    className='flex justify-between'
-                  >
-                    <motion.button
-                      className="flex grow justify-center px-5 py-3 rounded-full bg-primary text-primary-foreground font-medium text-md hover:bg-primary/90 transition-colors border border-[hsl(var(--foreground))]/10 hover:shadow-md"
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                    >
-                      <UsersRound className='me-2 font-thin px-0.5'/> Join Group
-                    </motion.button>
+                  <motion.div className='flex justify-between'>
+                    <Link className='flex grow' href={`/group/` + group.id}>
+                      <motion.button
+                        className="flex grow justify-center px-5 py-3 rounded-full bg-primary text-primary-foreground font-medium text-md hover:bg-primary/90 transition-colors border border-[hsl(var(--foreground))]/10 hover:shadow-md"
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                      >
+                        <Search className='me-2 font-thin px-0.5'/> Check Group
+                      </motion.button>
+                    </Link>
                     <Link href={group.chatLink} className='flex grow'>
                       <motion.button
                         className="flex grow justify-center ms-2 px-5 py-3 rounded-full bg-primary text-primary-foreground font-medium text-md hover:bg-primary/90 transition-colors border border-[hsl(var(--foreground))]/10 hover:shadow-md"
@@ -140,7 +116,7 @@ export default function Dashboard() {
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-t-[hsl(var(--foreground))]/10 mt-12">
+      <footer className="border-t border-t-[hsl(var(--foreground))]/10">
         <div className="container mx-auto px-4 py-6 text-center">
           <p className="text-muted-foreground">
             © {new Date().getFullYear()}{' '}
