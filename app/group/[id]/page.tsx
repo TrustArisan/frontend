@@ -220,17 +220,16 @@ export default function GroupDetailPage() {
                 {/* <h2 className="text-xl font-semibold mb-4">Controls</h2> */}
                 <div className="flex space-y-4">
                     <div className='flex grow flex-col md:flex-row md:justify-end gap-4'>
-                        {!isConnected && (
-                            <Link className='flex flex-initial' href={`/`}>
-                                <motion.button
-                                    className="flex grow justify-center px-5 py-3 rounded-full bg-primary text-primary-foreground font-medium text-md hover:bg-primary/90 transition-colors border border-[hsl(var(--foreground))]/10 shadow-sm hover:shadow-md"
-                                    whileHover={{ scale: 1.05 }}
-                                    whileTap={{ scale: 0.95 }}
-                                    >
-                                    <UsersRound className='me-2 font-thin px-0.5'/> Join Group
-                                </motion.button>
-                            </Link>
-                        )}
+                        {/* Can only join group when wallet is connected */}
+                        <motion.button
+                            onClick={() => (console.log("Click"))}
+                            className={(isConnected ? "" : "text-[hsl(var(--foreground))]/25 bg-gray-600/20 ") + "flex flex-initial justify-center px-5 py-3 rounded-full bg-primary text-primary-foreground font-medium text-md hover:bg-primary/90 transition-colors border border-[hsl(var(--foreground))]/10 shadow-sm hover:shadow-md "}
+                            whileHover={isConnected ? { scale: 1.05 } : {}}
+                            whileTap={{ scale: 0.95 }}
+                            disabled={!isConnected}
+                            >
+                            <UsersRound className='me-2 font-thin px-0.5'/> Join Group
+                        </motion.button>
                         <Link className='flex flex-initial' target='_blank' href={group.settings.telegramGroupUrl} rel='noopener noreferrer'>
                             <motion.button
                                 className="flex grow justify-center px-5 py-3 rounded-full bg-primary text-primary-foreground font-medium text-md hover:bg-primary/90 transition-colors border border-[hsl(var(--foreground))]/10 shadow-sm hover:shadow-md"
