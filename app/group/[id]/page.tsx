@@ -8,7 +8,7 @@ import { GROUP_ABI } from '@/app/utils/TrustArisanGroupABI';
 import Header from '@/app/components/Header';
 import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
-import { ChevronLeft, Users, Percent, Coins, UsersRound, MessageCircleMore, HandCoins, Bitcoin, RotateCcw } from 'lucide-react';
+import { ChevronLeft, Users, Percent, Coins, UsersRound, MessageCircleMore, HandCoins, Bitcoin, RotateCcw, Boxes } from 'lucide-react';
 import { Avatar } from '@/app/components/Avatar';
 import Link from 'next/link';
 import ThemeToggle from '@/app/components/ThemeToggle';
@@ -19,6 +19,7 @@ export default function GroupDetailPage() {
   const publicClient = usePublicClient();
   const { address, isConnected } = useAccount();
   const [isMember, setIsMember] = useState<boolean>(false);
+  const [isCoordinator, setIsCoordinator] = useState<boolean>(false);
 
   // Convert id to Address
   const groupAddress = id && typeof id === 'string' ? (isAddress(id) ? id as Address : undefined) : undefined;
@@ -31,8 +32,7 @@ export default function GroupDetailPage() {
   const [error, setError] = useState<string | null>(null);
 
   async function reloadData() {
-    await checkMembership();
-    await fetchGroupDetails();
+    await fetchGroupDetails(); // Automatically trigger membership check
     await balanceRefetch();
   }
 
@@ -78,28 +78,43 @@ export default function GroupDetailPage() {
   async function checkMembership() {
     if (!publicClient || !address || !groupAddress) {
       setIsMember(false);
+      setIsCoordinator(false);
       return;
     }
 
     try {
-      const memberStatus = await publicClient.readContract({
-        address: groupAddress,
-        abi: GROUP_ABI,
-        functionName: 'isMember',
-        args: [address]
-      });
+      // Now check both member and coordinator status
+      const [memberStatus] = await Promise.all([
+        publicClient.readContract({
+          address: groupAddress,
+          abi: GROUP_ABI,
+          functionName: 'isMember',
+          args: [address]
+        })
+      ]);
+
+      // Since we've ensured group is loaded, we can safely access group.settings
+      const isUserCoordinator = group.settings.coordinator.walletAddress === address;
       
       setIsMember(Boolean(memberStatus));
+      setIsCoordinator(isUserCoordinator);
     } catch (error) {
       console.error('Error checking membership:', error);
       setIsMember(false);
+      setIsCoordinator(false);
     }
   }
 
   useEffect(() => {
-    checkMembership();
     fetchGroupDetails();
-  }, [publicClient, id, address]);
+    balanceRefetch();
+  }, [publicClient, id]);
+
+  useEffect(() => {
+    if (isConnected && address && group != null) {
+      checkMembership(); 
+    }
+  }, [isConnected, address, group]);
 
   if (isLoading) {
     return (
@@ -147,7 +162,7 @@ export default function GroupDetailPage() {
           className="bg-card rounded-xl border border-border p-6 shadow-sm"
         >
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
-            <div className='flex md:flex-row flex-col items-center place-items-center justify-items-center'>
+            <div className='flex w-full md:flex-row flex-col items-center place-items-center justify-items-center'>
                 <Avatar name={group.title} size='xxl' className='md:me-4 md:mb-0 mb-4'/>
                 <div>
                     <h1 className="text-3xl font-bold mb-1 md:text-start text-center">{group.settings.title}</h1>
@@ -244,6 +259,16 @@ export default function GroupDetailPage() {
                 {/* <h2 className="text-xl font-semibold mb-4">Controls</h2> */}
                 <div className="flex space-y-4">
                     <div className='flex grow flex-col md:flex-row md:justify-end gap-4'>
+                        {/* Coordinator Only Group Settings */}
+                        {isCoordinator && (
+                          <motion.button
+                              className="flex justify-center px-5 py-3 rounded-full bg-primary text-primary-foreground font-medium text-md hover:bg-primary/90 transition-colors border border-[hsl(var(--foreground))]/10 shadow-sm hover:shadow-md"
+                              whileHover={{ scale: 1.05 }}
+                              whileTap={{ scale: 0.95 }}
+                              >
+                              <Boxes className='me-2 font-thin px-0.5'/> Group Settings
+                          </motion.button>
+                        )}
                         {/* Can only join group when wallet is connected AND not a member */}
                         <motion.button
                             onClick={() => (console.log("Click"))}
@@ -254,6 +279,7 @@ export default function GroupDetailPage() {
                             >
                             <UsersRound className='me-2 font-thin px-0.5'/> Join Group
                         </motion.button>
+                        {/* Redirect to chatroom */}
                         <Link className='flex flex-initial' target='_blank' href={group.settings.telegramGroupUrl} rel='noopener noreferrer'>
                             <motion.button
                                 className="flex grow justify-center px-5 py-3 rounded-full bg-primary text-primary-foreground font-medium text-md hover:bg-primary/90 transition-colors border border-[hsl(var(--foreground))]/10 shadow-sm hover:shadow-md"
@@ -263,6 +289,7 @@ export default function GroupDetailPage() {
                                 <MessageCircleMore className='me-2 font-thin px-0.5'/> Join Chat
                             </motion.button>
                         </Link>
+                        {/* Refetch data */}
                         <motion.button
                             type='button'
                             onClick={reloadData}
@@ -272,7 +299,7 @@ export default function GroupDetailPage() {
                             >
                             <RotateCcw className='me-2 font-thin px-0.5'/> Reload Data
                         </motion.button>
-                        <ThemeToggle unhideText={true} injectClass=''/>
+                        <ThemeToggle unhideText={true}/>
                     </div>
                 </div>
           </div>
