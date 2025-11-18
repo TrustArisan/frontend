@@ -5,7 +5,15 @@ import { useTheme } from 'next-themes';
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 
-export default function ThemeToggle({ className = '' }: { className?: string }) {
+export default function ThemeToggle({ 
+  className = '',
+  unhideText = false,
+  injectClass = ''
+}: { 
+  className?: string,
+  unhideText?: boolean,
+  injectClass?: string
+}) {
   const [mounted, setMounted] = useState(false);
   const { theme = 'light', setTheme } = useTheme();
 
@@ -25,15 +33,19 @@ export default function ThemeToggle({ className = '' }: { className?: string }) 
   return (
     <motion.button
           onClick={toggleTheme}
-          className="px-3 py-3 rounded-full bg-primary text-primary-foreground font-medium text-lg hover:bg-primary/90 transition-colors border border-[hsl(var(--foreground))]/20 shadow-sm hover:shadow-md"
+          className="flex px-3 py-3 rounded-full bg-primary text-primary-foreground font-medium text-md hover:bg-primary/90 transition-colors border border-[hsl(var(--foreground))]/20 shadow-sm hover:shadow-md"
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
           aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
         >
             {theme === 'dark' ? (
-                <Sun className="h-6 w-6 text-white-300" />
+                <div className='flex grow justify-center'>
+                  <Sun className="px-0.5 h-6 w-6 text-white-300 sm:me-2" /> <span className={(unhideText ? '' : 'sm:inline hidden ') + injectClass}>Light Mode</span>
+                </div>
             ) : (
-                <Moon className="h-6 w-6 text-muted-foreground" />
+                <div className='flex grow justify-center'>
+                  <Moon className="px-0.5 h-6 w-6 text-muted-foreground sm:me-2" /> <span className={(unhideText ? '' : 'sm:inline hidden ') + injectClass}>Dark Mode</span>
+                </div>
             )}
     </motion.button>
   );

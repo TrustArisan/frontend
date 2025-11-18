@@ -10,10 +10,12 @@ import {
 } from 'lucide-react';
 import ThemeToggle from '@/app/components/ThemeToggle';
 import Link from 'next/link';
+import { useRouter } from 'next/router';
 
 export default function CreateGroupPage() {
   const { address, isConnected } = useAccount();
   const { createGroup, isPending, error } = useCreateGroup();
+  const router = useRouter();
 
   // Form state
   const [formData, setFormData] = useState({
@@ -189,15 +191,14 @@ export default function CreateGroupPage() {
     <div className="min-h-screen bg-background text-foreground p-6">
       <div className="max-w-2xl mx-auto">
         <div className="bg-card border border-[hsl(var(--foreground))]/20 rounded-xl p-8 shadow">
-          <Link href="/">
-            <motion.button
-              className="flex pe-8 py-3 rounded-full bg-primary text-primary-foreground font-medium text-md hover:bg-primary/90 transition-colors"
-              whileHover={{ x: -4 }}
-              whileTap={{ scale: 0.95 }}
-            >
-              <ChevronLeft className='me-3' /> Go Back
-            </motion.button>
-          </Link>
+          <motion.button
+            onClick={() => router.back()}
+            className="flex pe-8 py-3 rounded-full bg-primary text-primary-foreground font-medium text-md hover:bg-primary/90 transition-colors"
+            whileHover={{ x: -4 }}
+            whileTap={{ scale: 0.95 }}
+          >
+            <ChevronLeft className='me-3' /> Go Back
+          </motion.button>
           <h1 className="text-3xl font-bold mb-2">Create Arisan Group</h1>
           <p className="text-muted-foreground mb-8">Set up a new Arisan group with your custom parameters</p>
 
@@ -221,7 +222,7 @@ export default function CreateGroupPage() {
             {/* Group Title */}
             <div>
               <label htmlFor="title" className="block text-sm font-medium text-foreground mb-2">
-                Group Title *
+                Group Title <span className='text-red-500'>*</span>
               </label>
               <input
                 id="title"
@@ -242,7 +243,7 @@ export default function CreateGroupPage() {
             {/* Telegram Group URL */}
             <div>
               <label htmlFor="telegramGroupUrl" className="block text-sm font-medium text-foreground mb-2">
-                Telegram Group URL *
+                Telegram Group URL <span className='text-red-500'>*</span>
               </label>
               <input
                 id="telegramGroupUrl"
@@ -263,7 +264,7 @@ export default function CreateGroupPage() {
             {/* Coordinator Telegram Username */}
             <div>
               <label htmlFor="coordinatorTelegramUsername" className="block text-sm font-medium text-foreground mb-2">
-                Your Telegram Username *
+                Your Telegram Username <span className='text-red-500'>*</span>
               </label>
               <input
                 id="coordinatorTelegramUsername"
@@ -286,7 +287,7 @@ export default function CreateGroupPage() {
               {/* Coordinator Commission Percentage */}
               <div>
                 <label htmlFor="coordinatorCommissionPercentage" className="block text-sm font-medium text-foreground mb-2">
-                  Commission % (5-50) *
+                  Commission % (5-50) <span className='text-red-500'>*</span>
                 </label>
                 <div className="flex items-center">
                   <input
@@ -311,7 +312,7 @@ export default function CreateGroupPage() {
               {/* Prize Percentage */}
               <div>
                 <label htmlFor="prizePercentage" className="block text-sm font-medium text-foreground mb-2">
-                  Prize % *
+                  Prize % <span className='text-red-500'>*</span>
                 </label>
                 <div className="flex items-center">
                   <input
@@ -341,7 +342,7 @@ export default function CreateGroupPage() {
             <div>
               <div className="flex justify-between items-center mb-2">
                 <label htmlFor="contributionAmountInWei" className="block text-sm font-medium text-foreground">
-                  Contribution Amount ({isWei ? 'Wei' : 'ETH'}) *
+                  Contribution Amount ({isWei ? 'Wei' : 'ETH'}) <span className='text-red-500'>*</span>
                 </label>
               </div>
               <div className="flex items-center">
@@ -403,7 +404,10 @@ export default function CreateGroupPage() {
             </div>
 
             <p className="text-slate-500 text-xs text-center">
-              All fields marked with * are required
+              All fields marked with <span className='text-red-500'>*</span> are required
+            </p>
+            <p className="text-slate-500 text-xs text-center -mt-4">
+              By submitting, you agree for the Platform to take <span className='underline text-green-700'>5%</span> of the coordinator's commission
             </p>
           </form>
         </div>
