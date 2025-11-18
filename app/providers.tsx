@@ -10,14 +10,7 @@ import {
   darkTheme,
 } from '@rainbow-me/rainbowkit';
 import { WagmiProvider } from 'wagmi';
-import {
-  mainnet,
-  polygon,
-  optimism,
-  arbitrum,
-  base,
-  sepolia,
-} from 'wagmi/chains';
+import { sepolia } from 'wagmi/chains';
 import {
   QueryClientProvider,
   QueryClient,
@@ -76,7 +69,8 @@ export function Providers({ children }: { children: React.ReactNode }) {
   const config = getDefaultConfig({
     appName: 'TrustArisan',
     projectId: '5a7739743d8bb6aa03dd0a0143df41eb',
-    chains: [mainnet, polygon, optimism, arbitrum, base, sepolia],
+    chains: [sepolia], // other options can be mainnet, polygon, optimism, arbitrum, base
+    syncConnectedChain: true,
     ssr: false,
   });
 

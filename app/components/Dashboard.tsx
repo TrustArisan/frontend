@@ -2,10 +2,6 @@
 
 import { motion } from 'framer-motion';
 import { 
-  useState, 
-  useEffect 
-} from 'react';
-import { 
   MessageCircleMore, 
   UsersRound,
   CirclePlus
@@ -27,47 +23,9 @@ interface Group {
 }
 
 export default function Dashboard() {
-  const [groups, setGroups] = useState<Group[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const { count, isLoading:isLoadingGroup, error } = useGroupsCount();
   const { addresses, isLoading:isLoadingAddresses } = useGroupAddresses();
   const { groups: groupsList, isLoading: isLoadingGroupsList, error: errorGroupsList } = useGroupsList();
-
-  useEffect(() => {
-    // Simulate API/contract call
-    const fetchGroups = async () => {
-      try {
-        // TODO: Replace with actual contract call
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        // Mock data for now
-        const mockGroups: Group[] = [
-          {
-            id: '1',
-            title: 'Neighborhood Arisan',
-            coordinator: '@johndoe',
-            chatLink: 'https://t.me/neighborhood_arisan',
-            size: 10,
-            currentSize: 5,
-          },
-          {
-            id: '2',
-            title: 'Office Arisan',
-            coordinator: '@janedoe',
-            chatLink: 'https://t.me/office_arisan',
-            size: 15,
-            currentSize: 15,
-          },
-        ];
-        setGroups(mockGroups);
-      } catch (error) {
-        console.error('Error fetching groups:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchGroups();
-  }, []);
 
   return (
     <motion.div 
