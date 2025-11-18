@@ -18,6 +18,7 @@ export default function GroupDetailPage() {
   const router = useRouter();
   const publicClient = usePublicClient();
   const { address, isConnected } = useAccount();
+  const [isMember, setIsMember] = useState<boolean>(false);
 
   // Convert id to Address
   const groupAddress = id && typeof id === 'string' ? (isAddress(id) ? id as Address : undefined) : undefined;
@@ -30,6 +31,7 @@ export default function GroupDetailPage() {
   const [error, setError] = useState<string | null>(null);
 
   async function reloadData() {
+    await checkMembership();
     await fetchGroupDetails();
     await balanceRefetch();
   }
@@ -73,9 +75,31 @@ export default function GroupDetailPage() {
     }
   }
 
+  async function checkMembership() {
+    if (!publicClient || !address || !groupAddress) {
+      setIsMember(false);
+      return;
+    }
+
+    try {
+      const memberStatus = await publicClient.readContract({
+        address: groupAddress,
+        abi: GROUP_ABI,
+        functionName: 'isMember',
+        args: [address]
+      });
+      
+      setIsMember(Boolean(memberStatus));
+    } catch (error) {
+      console.error('Error checking membership:', error);
+      setIsMember(false);
+    }
+  }
+
   useEffect(() => {
+    checkMembership();
     fetchGroupDetails();
-  }, [publicClient, id]);
+  }, [publicClient, id, address]);
 
   if (isLoading) {
     return (
@@ -220,13 +244,13 @@ export default function GroupDetailPage() {
                 {/* <h2 className="text-xl font-semibold mb-4">Controls</h2> */}
                 <div className="flex space-y-4">
                     <div className='flex grow flex-col md:flex-row md:justify-end gap-4'>
-                        {/* Can only join group when wallet is connected */}
+                        {/* Can only join group when wallet is connected AND not a member */}
                         <motion.button
                             onClick={() => (console.log("Click"))}
-                            className={(isConnected ? "" : "text-[hsl(var(--foreground))]/25 bg-gray-600/20 ") + "flex flex-initial justify-center px-5 py-3 rounded-full bg-primary text-primary-foreground font-medium text-md hover:bg-primary/90 transition-colors border border-[hsl(var(--foreground))]/10 shadow-sm hover:shadow-md "}
-                            whileHover={isConnected ? { scale: 1.05 } : {}}
+                            className={((isConnected && !isMember) ? "" : "text-[hsl(var(--foreground))]/25 bg-gray-600/20 ") + "flex flex-initial justify-center px-5 py-3 rounded-full bg-primary text-primary-foreground font-medium text-md hover:bg-primary/90 transition-colors border border-[hsl(var(--foreground))]/10 shadow-sm hover:shadow-md "}
+                            whileHover={(isConnected && !isMember) ? { scale: 1.05 } : {}}
                             whileTap={{ scale: 0.95 }}
-                            disabled={!isConnected}
+                            disabled={(!isConnected || isMember)}
                             >
                             <UsersRound className='me-2 font-thin px-0.5'/> Join Group
                         </motion.button>
