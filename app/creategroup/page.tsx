@@ -151,6 +151,8 @@ export default function CreateGroupPage() {
       const result = await createGroup(submissionData);
       setTransactionHash(result.txHash);
 
+      console.log('✅ Group created:', result.txHash);
+
       setFormData({
         title: '',
         telegramGroupUrl: '',
