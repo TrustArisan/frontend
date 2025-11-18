@@ -8,11 +8,13 @@ import { motion } from 'framer-motion';
 export default function ThemeToggle({ 
   className = '',
   unhideText = false,
-  injectClass = ''
+  injectClass = '',
+  endMarginBool = true
 }: { 
   className?: string,
   unhideText?: boolean,
-  injectClass?: string
+  injectClass?: string,
+  endMarginBool?: boolean
 }) {
   const [mounted, setMounted] = useState(false);
   const { theme = 'light', setTheme } = useTheme();
@@ -40,11 +42,11 @@ export default function ThemeToggle({
         >
             {theme === 'dark' ? (
                 <div className='flex grow justify-center'>
-                  <Sun className="px-0.5 h-6 w-6 text-white-300 sm:me-2" /> <span className={(unhideText ? '' : 'sm:inline hidden ') + injectClass}>Light Mode</span>
+                  <Sun className={"px-0.5 h-6 w-6 text-white-300 " + (endMarginBool ? 'sm:me-2' : '')} /> <span className={(unhideText ? '' : 'sm:inline hidden ') + injectClass}>Light Mode</span>
                 </div>
             ) : (
                 <div className='flex grow justify-center'>
-                  <Moon className="px-0.5 h-6 w-6 text-muted-foreground sm:me-2" /> <span className={(unhideText ? '' : 'sm:inline hidden ') + injectClass}>Dark Mode</span>
+                  <Moon className={"px-0.5 h-6 w-6 text-muted-foreground " + (endMarginBool ? 'sm:me-2' : '')} /> <span className={(unhideText ? '' : 'sm:inline hidden ') + injectClass}>Dark Mode</span>
                 </div>
             )}
     </motion.button>

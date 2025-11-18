@@ -38,7 +38,7 @@ export default function Home() {
       {/* Theme Toggle (only visible on landing page) */}
       {!showDashboard && (
         <div className="fixed bottom-4 right-4 z-50">
-          <ThemeToggle />
+          <ThemeToggle unhideText={true} injectClass='hidden' endMarginBool={false}/>
         </div>
       )}
     </div>

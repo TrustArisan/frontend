@@ -2,13 +2,13 @@
 
 import { useParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { usePublicClient, useAccount, useBalance } from 'wagmi';
+import { usePublicClient, useAccount, useBalance, useWriteContract } from 'wagmi';
 import { Address, isAddress, formatEther } from 'viem';
 import { GROUP_ABI } from '@/app/utils/TrustArisanGroupABI';
 import Header from '@/app/components/Header';
 import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
-import { ChevronLeft, Users, Percent, Coins, UsersRound, MessageCircleMore, HandCoins, Bitcoin, RotateCcw, Boxes } from 'lucide-react';
+import { ChevronLeft, Users, Percent, Coins, UsersRound, MessageCircleMore, HandCoins, Bitcoin, RotateCcw, Boxes, BadgeCheck, Badge } from 'lucide-react';
 import { Avatar } from '@/app/components/Avatar';
 import Link from 'next/link';
 import ThemeToggle from '@/app/components/ThemeToggle';
@@ -20,6 +20,7 @@ export default function GroupDetailPage() {
   const { address, isConnected } = useAccount();
   const [isMember, setIsMember] = useState<boolean>(false);
   const [isCoordinator, setIsCoordinator] = useState<boolean>(false);
+  const { writeContractAsync, isPending, error: errorWriteContract } = useWriteContract();
 
   // Convert id to Address
   const groupAddress = id && typeof id === 'string' ? (isAddress(id) ? id as Address : undefined) : undefined;
@@ -105,6 +106,26 @@ export default function GroupDetailPage() {
     }
   }
 
+  async function toggleOpenJoin() {
+    if (!groupAddress || !isAddress(groupAddress)) {
+      console.error('Invalid group address');
+      return;
+    }
+
+    try {
+      const txHash = await writeContractAsync({
+        address: groupAddress as Address,
+        abi: GROUP_ABI,
+        functionName: 'toggleOpenJoin',
+        args: [!group.settings.openJoinEnabled],
+      });
+      
+      console.log('Toggle transaction sent:', txHash);
+    } catch (error: any) {
+      console.error('Error toggling open join:', error);
+    }
+  }
+
   useEffect(() => {
     fetchGroupDetails();
     balanceRefetch();
@@ -159,7 +180,7 @@ export default function GroupDetailPage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4 }}
-          className="bg-card rounded-xl border border-border p-6 shadow-sm"
+          className="bg-card rounded-xl border border-[hsl(var(--foreground))]/20 p-6 shadow-sm"
         >
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
             <div className='flex w-full md:flex-row flex-col items-center place-items-center justify-items-center'>
@@ -253,20 +274,27 @@ export default function GroupDetailPage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4 }}
-            className="bg-card rounded-xl border border-border p-6 shadow-sm mt-6"
+            className="bg-card rounded-xl border border-[hsl(var(--foreground))]/20 p-6 shadow-sm mt-6"
         >
             <div>
                 {/* <h2 className="text-xl font-semibold mb-4">Controls</h2> */}
                 <div className="flex space-y-4">
-                    <div className='flex grow flex-col md:flex-row md:justify-end gap-4'>
+                    <div className='w-full grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4'>
                         {/* Coordinator Only Group Settings */}
                         {isCoordinator && (
                           <motion.button
+                              type='button'
+                              onClick={toggleOpenJoin}
                               className="flex justify-center px-5 py-3 rounded-full bg-primary text-primary-foreground font-medium text-md hover:bg-primary/90 transition-colors border border-[hsl(var(--foreground))]/10 shadow-sm hover:shadow-md"
                               whileHover={{ scale: 1.05 }}
                               whileTap={{ scale: 0.95 }}
                               >
-                              <Boxes className='me-2 font-thin px-0.5'/> Group Settings
+                                {group.settings.openJoinEnabled ? (
+                                  <BadgeCheck className='me-2 font-thin px-0.5'/>
+                                ) : (
+                                  <Badge className='me-2 font-thin px-0.5'/>
+                                )}
+                               Toggle Open Join
                           </motion.button>
                         )}
                         {/* Can only join group when wallet is connected AND not a member */}
