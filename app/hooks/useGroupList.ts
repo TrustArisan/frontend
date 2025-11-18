@@ -1,5 +1,5 @@
 // hooks/useGroupsList.ts
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { usePublicClient } from 'wagmi';
 import { Address } from 'viem';
 import { FACTORY_ABI } from '../utils/TrustArisanFactoryABI';
@@ -13,70 +13,84 @@ export function useGroupsList() {
   const [error, setError] = useState<string | null>(null);
   const publicClient = usePublicClient();
 
-  useEffect(() => {
-    const fetch = async () => {
-      if (!publicClient) return;
+  const fetchGroups = useCallback(async () => {
+    if (!publicClient) return;
 
-      try {
-        setIsLoading(true);
+    try {
+      setIsLoading(true);
 
-        // Get addresses
-        const addresses = (await publicClient.readContract({
-          address: FACTORY_ADDRESS,
-          abi: FACTORY_ABI,
-          functionName: 'getGroupAddresses',
-        })) as Address[];
+      // Get addresses
+      const addresses = (await publicClient.readContract({
+        address: FACTORY_ADDRESS,
+        abi: FACTORY_ABI,
+        functionName: 'getGroupAddresses',
+      })) as Address[];
 
-        // Get all details and settings in parallel
-        const [details, settings] = await Promise.all([
-          // Get group details
-          Promise.all(
-            addresses.map(addr =>
-              publicClient.readContract({
-                address: addr,
-                abi: GROUP_ABI,
-                functionName: 'getGroupDetail',
-              })
-            )
-          ),
-          // Get group settings
-          Promise.all(
-            addresses.map(addr =>
-              publicClient.readContract({
-                address: addr,
-                abi: GROUP_ABI,
-                functionName: 'getGroupSettings',
-              })
-            )
+      // Get all details and settings in parallel
+      const [details, settings] = await Promise.all([
+        // Get group details
+        Promise.all(
+          addresses.map(addr =>
+            publicClient.readContract({
+              address: addr,
+              abi: GROUP_ABI,
+              functionName: 'getGroupDetail',
+            })
           )
-        ]);
+        ),
+        // Get group settings
+        Promise.all(
+          addresses.map(addr =>
+            publicClient.readContract({
+              address: addr,
+              abi: GROUP_ABI,
+              functionName: 'getGroupSettings',
+            })
+          )
+        )
+      ]);
 
-        // Transform the data to match our interfaces
-        const transformed: Group[] = addresses.map((addr, i) => {
-          const detail = details[i] as GroupDetail;
-          const setting = settings[i] as GroupSettings;
-          
-          return {
-            id: addr,
-            title: setting.title,
-            coordinator: setting.coordinator.telegramUsername,
-            chatLink: setting.telegramGroupUrl,
-            size: Number(setting.maxCapacity),
-            currentSize: Number(detail.membersCount),
-            settings: setting
-          };
-        });
+      // Transform the data to match our interfaces
+      const transformed: Group[] = addresses.map((addr, i) => {
+        const detail = details[i] as GroupDetail;
+        const setting = settings[i] as GroupSettings;
+        
+        return {
+          id: addr,
+          title: setting.title,
+          coordinator: setting.coordinator.telegramUsername,
+          chatLink: setting.telegramGroupUrl,
+          size: Number(setting.maxCapacity),
+          currentSize: Number(detail.membersCount),
+          settings: setting
+        };
+      });
 
-        setGroups(transformed);
-      } catch (e) {
-        setError(e instanceof Error ? e.message : 'Error');
-      } finally {
-        setIsLoading(false);
-      }
-    };
+      setGroups(transformed);
+      return transformed;
+    } catch (e) {
+      const errorMessage = e instanceof Error ? e.message : 'Error';
+      setError(errorMessage);
+      throw new Error(errorMessage);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [publicClient]);
 
-    fetch();
-  }, [publicClient]); // Re-fetch only if publicClient changes
+  useEffect(() => {
+    fetchGroups().catch(console.error);
+  }, [fetchGroups]);
 
-  return { groups, isLoading, error };
+  // Function to manually update the groups data
+  const updateGroups = useCallback((updater: (currentGroups: Group[]) => Group[]) => {
+    setGroups(updater);
+  }, []);
+
+  return { 
+    groups, 
+    isLoading, 
+    error, 
+    refetch: fetchGroups,
+    updateGroups
+  };
 }

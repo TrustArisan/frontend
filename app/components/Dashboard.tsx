@@ -4,7 +4,8 @@ import { motion } from 'framer-motion';
 import { 
   MessageCircleMore, 
   UsersRound,
-  CirclePlus
+  CirclePlus,
+  RotateCcw
 } from 'lucide-react';
 import ThemeToggle from './ThemeToggle';
 import Link from 'next/link';
@@ -15,7 +16,11 @@ import { Avatar } from '@/app/components/Avatar';
 
 export default function Dashboard() {
   const { count, isLoading:isLoadingGroup, error } = useGroupsCount();
-  const { groups: groupsList, isLoading: isLoadingGroupsList, error: errorGroupsList } = useGroupsList();
+  const { groups: groupsList, isLoading: isLoadingGroupsList, error: errorGroupsList, refetch } = useGroupsList();
+
+  async function updateGroupsLists() {
+    await refetch();
+  }
 
   return (
     <motion.div 
@@ -54,15 +59,26 @@ export default function Dashboard() {
       <main className="container mx-auto px-4 py-8">
         <div className="flex justify-between items-center">
           <h2 className="text-2xl font-semibold">Available Groups</h2>
-          <Link href="/creategroup">
+          <div className='flex gap-2'>
             <motion.button
-              className="flex px-5 py-3 rounded-full bg-primary text-primary-foreground font-medium text-md hover:bg-primary/90 transition-colors border border-[hsl(var(--foreground))]/10 hover:shadow-md"
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-            >
-              <CirclePlus className='me-2 px-0.5'/> Create Group
-            </motion.button>
-          </Link>
+                type='button'
+                onClick={updateGroupsLists}
+                className="flex sm:px-5 px-3 py-3 rounded-full bg-primary text-primary-foreground font-medium text-md hover:bg-primary/90 transition-colors border border-[hsl(var(--foreground))]/10 hover:shadow-md"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+              >
+                <RotateCcw className='sm:me-2 px-0.5' /> <span className='sm:inline hidden'>Reload</span>
+              </motion.button>
+            <Link href="/creategroup">
+              <motion.button
+                className="flex sm:px-5 px-3 py-3 rounded-full bg-primary text-primary-foreground font-medium text-md hover:bg-primary/90 transition-colors border border-[hsl(var(--foreground))]/10 hover:shadow-md"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+              >
+                <CirclePlus className='sm:me-2 px-0.5'/> <span className='sm:inline hidden'>Create Group</span>
+              </motion.button>
+            </Link>
+          </div>
         </div>
 
         {isLoadingGroupsList ? (
