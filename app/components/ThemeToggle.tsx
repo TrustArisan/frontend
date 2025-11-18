@@ -25,7 +25,7 @@ export default function ThemeToggle({ className = '' }: { className?: string }) 
   return (
     <motion.button
           onClick={toggleTheme}
-          className="px-3 py-3 rounded-full bg-primary text-primary-foreground font-medium text-lg hover:bg-primary/90 transition-colors border border-[hsl(var(--foreground))]/20 shadow-md hover:shadow-xl"
+          className="px-3 py-3 rounded-full bg-primary text-primary-foreground font-medium text-lg hover:bg-primary/90 transition-colors border border-[hsl(var(--foreground))]/20 shadow-sm hover:shadow-md"
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
           aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}

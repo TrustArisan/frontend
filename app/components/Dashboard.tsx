@@ -50,7 +50,6 @@ export default function Dashboard() {
                 largeScreen: "full"
               }}
             />
-            <ThemeToggle />
           </div>
         </div>
       </header>
@@ -63,7 +62,7 @@ export default function Dashboard() {
             <motion.button
                 type='button'
                 onClick={updateGroupsLists}
-                className="flex sm:px-5 px-3 py-3 rounded-full bg-primary text-primary-foreground font-medium text-md hover:bg-primary/90 transition-colors border border-[hsl(var(--foreground))]/10 hover:shadow-md"
+                className="flex sm:px-5 px-3 py-3 rounded-full bg-primary text-primary-foreground font-medium text-md hover:bg-primary/90 transition-colors border border-[hsl(var(--foreground))]/10 shadow-sm hover:shadow-md"
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
               >
@@ -71,13 +70,14 @@ export default function Dashboard() {
               </motion.button>
             <Link href="/creategroup">
               <motion.button
-                className="flex sm:px-5 px-3 py-3 rounded-full bg-primary text-primary-foreground font-medium text-md hover:bg-primary/90 transition-colors border border-[hsl(var(--foreground))]/10 hover:shadow-md"
+                className="flex sm:px-5 px-3 py-3 rounded-full bg-primary text-primary-foreground font-medium text-md hover:bg-primary/90 transition-colors border border-[hsl(var(--foreground))]/10 shadow-sm hover:shadow-md"
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
               >
                 <CirclePlus className='sm:me-2 px-0.5'/> <span className='sm:inline hidden'>Create Group</span>
               </motion.button>
             </Link>
+            <ThemeToggle />
           </div>
         </div>
 
