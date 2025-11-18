@@ -21,7 +21,6 @@ const queryClient = new QueryClient();
 function ThemeAwareRainbowKitProvider({ children }: { children: React.ReactNode }) {
   const { theme } = useTheme();
   const [isDark, setIsDark] = useState(false);
-  const [mounted, setMounted] = useState(false);
 
   // Handle theme changes
   useEffect(() => {
@@ -48,8 +47,6 @@ function ThemeAwareRainbowKitProvider({ children }: { children: React.ReactNode 
       attributes: true,
       attributeFilter: ['class']
     });
-
-    setMounted(true);
 
     // Clean up observer on unmount
     return () => observer.disconnect();

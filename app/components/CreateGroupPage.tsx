@@ -149,9 +149,9 @@ export default function CreateGroupPage() {
     }
 
     try {
-      // console.log(submissionData);
-      await createGroup(submissionData);
-      // Reset form on success
+      const result = await createGroup(submissionData);
+      setTransactionHash(result.txHash);
+
       setFormData({
         title: '',
         telegramGroupUrl: '',
@@ -160,8 +160,6 @@ export default function CreateGroupPage() {
         contributionAmountInWei: '',
         prizePercentage: 0,
       });
-
-      router.push('/');
     } catch (err) {
       console.error('Form submission error:', err);
     }

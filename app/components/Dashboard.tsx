@@ -10,21 +10,10 @@ import ThemeToggle from './ThemeToggle';
 import Link from 'next/link';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { useGroupsCount } from '@/app/hooks/useGroupCount';
-import { useGroupAddresses } from '@/app/hooks/useGroupAddresses';
 import { useGroupsList } from '@/app/hooks/useGroupList';
-
-interface Group {
-  id: string;
-  title: string;
-  coordinator: string;
-  chatLink: string;
-  size: number;
-  currentSize: number;
-}
 
 export default function Dashboard() {
   const { count, isLoading:isLoadingGroup, error } = useGroupsCount();
-  const { addresses, isLoading:isLoadingAddresses } = useGroupAddresses();
   const { groups: groupsList, isLoading: isLoadingGroupsList, error: errorGroupsList } = useGroupsList();
 
   return (
