@@ -1,5 +1,4 @@
 'use client';
-
 import React, { useState, FormEvent } from 'react';
 import { useCreateGroup } from '@/app/hooks/useCreateGroup';
 import { useAccount } from 'wagmi';
@@ -10,7 +9,7 @@ import {
 } from 'lucide-react';
 import ThemeToggle from '@/app/components/ThemeToggle';
 import Link from 'next/link';
-import { useRouter } from 'next/router';
+import { useRouter } from 'next/navigation';
 
 export default function CreateGroupPage() {
   const { address, isConnected } = useAccount();

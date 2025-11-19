@@ -10,6 +10,7 @@ import {
 import ThemeToggle from './ThemeToggle';
 import Link from 'next/link';
 import Header from '@/app/components/Header';
+import Footer from '@/app/components/Footer';
 import { useGroupsList } from '@/app/hooks/useGroupList';
 import { Avatar } from '@/app/components/Avatar';
 
@@ -22,7 +23,7 @@ export default function Dashboard() {
 
   return (
     <motion.div 
-      className="min-h-screen w-full bg-background text-foreground"
+      className="min-h-screen w-full bg-background"
       initial={{ y: '100vh' }}
       animate={{ y: 0 }}
       transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
@@ -31,103 +32,175 @@ export default function Dashboard() {
       <Header />
 
       {/* Main Content */}
-      <main className="container mx-auto px-4 py-8 min-h-screen">
-        <div className="flex justify-between items-center">
-          <h2 className="text-2xl font-semibold">Available Groups</h2>
-          <div className='flex gap-2'>
+      <main className="container mx-auto px-6 py-12">
+        {/* Page Title & Actions */}
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
+          <div>
+            <h1 className="text-3xl font-bold text-foreground mb-2">Available Groups</h1>
+            <p className="text-[#648196] text-lg">Total: <span className="font-semibold text-[#4f7a97]">{count}</span> groups</p>
+          </div>
+          
+          <div className="flex gap-3">
             <motion.button
-                type='button'
-                onClick={updateGroupsLists}
-                className="flex sm:px-5 px-3 py-3 rounded-full bg-primary text-primary-foreground font-medium text-md hover:bg-primary/90 transition-colors border border-[hsl(var(--foreground))]/10 shadow-sm hover:shadow-md"
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-              >
-                <RotateCcw className='sm:me-2 px-0.5' /> <span className='sm:inline hidden'>Reload</span>
-              </motion.button>
+              type="button"
+              onClick={updateGroupsLists}
+              className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#5584a0] hover:bg-[#4f7a97] text-white font-medium transition-all shadow-sm hover:shadow-md"
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+            >
+              <RotateCcw size={18} />
+              <span className="hidden sm:inline">Reload</span>
+            </motion.button>
+            
             <Link href="/creategroup">
               <motion.button
-                className="flex sm:px-5 px-3 py-3 rounded-full bg-primary text-primary-foreground font-medium text-md hover:bg-primary/90 transition-colors border border-[hsl(var(--foreground))]/10 shadow-sm hover:shadow-md"
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
+                className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#eeb446] hover:bg-[#daa23d] text-white font-medium transition-all shadow-sm hover:shadow-md"
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
               >
-                <CirclePlus className='sm:me-2 px-0.5'/> <span className='sm:inline hidden'>Create Group</span>
+                <CirclePlus size={18} />
+                <span className="hidden sm:inline">Create Group</span>
               </motion.button>
             </Link>
+
             <ThemeToggle />
           </div>
         </div>
 
+        {/* Loading State */}
         {isLoadingGroupsList ? (
-          <div className="flex justify-center items-center h-64">
-            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+          <div className="flex justify-center items-center h-96">
+            <div className="relative">
+              <div className="animate-spin rounded-full h-16 w-16 border-4 border-[#4f7a97]/20 border-t-[#4f7a97]"></div>
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="h-8 w-8 rounded-full bg-[#eeb446]/20"></div>
+              </div>
+            </div>
           </div>
         ) : (
           <div>
-            <p className='mb-8 text-lg'>Total: {count}</p>
-            {errorGroupsList && <div>Error: {errorGroupsList}</div>}
+            {/* Error State */}
+            {errorGroupsList && (
+              <div className="bg-red-50 border border-red-200 text-red-700 px-6 py-4 rounded-xl mb-6">
+                <p className="font-medium">Error: {errorGroupsList}</p>
+              </div>
+            )}
+
+            {/* Groups Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {groupsList.map((group) => (
+              {groupsList.map((group, index) => (
                 <motion.div
                   key={group.id}
-                  className="rounded-xl border border-[hsl(var(--foreground))]/20 p-6 hover:shadow-lg transition-shadow"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.1 }}
+                  className="group relative bg-background rounded-2xl border-2 border-[#4f7a97]/10 hover:border-[#4f7a97]/30 p-6 hover:shadow-xl transition-all duration-300"
                 >
-                  <div className='flex md:flex-row flex-col items-center place-items-center justify-items-center mb-4'>
-                    <Avatar name={group.title} size='xxl' className='md:me-4 md:mb-0 mb-4'/>
-                    <div>
-                      <h3 className="flex text-xl font-semibold md:mb-2 md:justify-start justify-center">{group.title}</h3>
-                      <p className="flex text-muted-foreground md:justify-start justify-center">
-                        Coordinator: {group.coordinator}
+                  {/* Group Header */}
+                  <div className="flex flex-col items-center text-center mb-6">
+                    <Avatar name={group.title} size="xxl" className="mb-4 ring-4 ring-[#eeb446]/20" />
+                    
+                    <h3 className="text-xl font-bold text-foreground mb-2">{group.title}</h3>
+                    
+                    <p className="text-sm text-[#648196] mb-2">
+                      Coordinator: <span className="font-medium text-[#4f7a97]">{group.coordinator}</span>
+                    </p>
+                    
+                    <div className="w-full bg-[#4f7a97]/5 rounded-lg px-3 py-2 mt-2">
+                      <p className="text-xs text-[#648196] truncate">
+                        Chat: <span className="text-[#4f7a97] font-medium">{group.chatLink}</span>
                       </p>
-                      <div className="flex bg-secondary/20 rounded-full md:justify-start justify-center">
-                        <div 
-                          className="bg-primary h-full rounded-full truncate" 
-                        >Groupchat: {group.chatLink} </div>
-                      </div>
                     </div>
                   </div>
-                  <p className="text-sm text-muted-foreground mb-2 md:text-start text-center">
-                    <span className='underline'>{group.currentSize}</span> of {group.size} members
-                  </p>
-                  <motion.div className='flex justify-between'>
-                    <Link className='flex grow' href={`/group/` + group.id}>
+
+                  {/* Members Progress */}
+                  <div className="mb-6">
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-sm font-medium text-[#648196]">Members</span>
+                      <span className="text-sm font-bold text-[#4f7a97]">
+                        {group.currentSize}/{group.size}
+                      </span>
+                    </div>
+                    <div className="w-full bg-[#4f7a97]/10 rounded-full h-2.5 overflow-hidden">
+                      <div 
+                        className="bg-gradient-to-r from-[#eeb446] to-[#4f7a97] h-full rounded-full transition-all duration-500"
+                        style={{ width: `${(group.currentSize / group.size) * 100}%` }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div className="flex gap-2">
+                    <Link href={`/group/${group.id}`} className="flex-1">
                       <motion.button
-                        className="flex grow justify-center px-5 py-3 rounded-full bg-primary text-primary-foreground font-medium text-md hover:bg-primary/90 transition-colors border border-[hsl(var(--foreground))]/10 hover:shadow-md"
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
+                        className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-[#5584a0] hover:bg-[#4f7a97] text-white font-medium text-sm transition-all"
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
                       >
-                        <Search className='me-2 font-thin px-0.5'/> Check Group
+                        <Search size={16} />
+                        <span>Check</span>
                       </motion.button>
                     </Link>
-                    <Link href={group.chatLink} className='flex grow'>
+                    
+                    <Link href={group.chatLink} className="flex-1">
                       <motion.button
-                        className="flex grow justify-center ms-2 px-5 py-3 rounded-full bg-primary text-primary-foreground font-medium text-md hover:bg-primary/90 transition-colors border border-[hsl(var(--foreground))]/10 hover:shadow-md"
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
+                        className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-[#eeb446] hover:bg-[#daa23d] text-white font-medium text-sm transition-all"
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
                       >
-                        <MessageCircleMore className='me-2 font-thin px-0.5'/> Join Chat
+                        <MessageCircleMore size={16} />
+                        <span>Join</span>
                       </motion.button>
                     </Link>
-                  </motion.div>
+                  </div>
+
+                  {/* Decorative Element */}
+                  <div className="absolute top-0 right-0 w-20 h-20 bg-gradient-to-br from-[#eeb446]/10 to-transparent rounded-bl-full opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                 </motion.div>
               ))}
             </div>
+
+            {/* Empty State */}
+            {groupsList.length === 0 && !errorGroupsList && (
+              <div className="text-center py-20">
+                <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-[#4f7a97]/10 mb-6">
+                  <Search size={40} className="text-[#4f7a97]" />
+                </div>
+                <h3 className="text-2xl font-bold text-foreground mb-2">No Groups Yet</h3>
+                <p className="text-[#648196] mb-6">Be the first to create a group!</p>
+                <Link href="/creategroup">
+                  <motion.button
+                    className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-[#eeb446] hover:bg-[#daa23d] text-white font-medium"
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                  >
+                    <CirclePlus size={20} />
+                    Create First Group
+                  </motion.button>
+                </Link>
+              </div>
+            )}
           </div>
         )}
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-t-[hsl(var(--foreground))]/10">
-        <div className="container mx-auto px-4 py-6 text-center">
-          <p className="text-muted-foreground">
-            © {new Date().getFullYear()}{' '}
+      <footer className="border-t border-[#4f7a97]/10 mt-20">
+        <div className="container mx-auto px-6 py-8">
+          <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+            <p className="text-[#648196] text-sm">
+              © {new Date().getFullYear()} TrustArisan. Building trust through technology.
+            </p>
+            
             <Link 
               href="https://github.com/TrustArisan" 
               target="_blank"
-              className="text-primary hover:underline"
+              className="text-[#4f7a97] hover:text-[#eeb446] font-medium text-sm transition-colors flex items-center gap-2"
             >
-              TrustArisan
+              <span>View on GitHub</span>
+              <span>→</span>
             </Link>
-          </p>
+          </div>
         </div>
       </footer>
     </motion.div>
