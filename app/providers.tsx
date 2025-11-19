@@ -15,7 +15,7 @@ import {
   QueryClientProvider,
   QueryClient,
 } from "@tanstack/react-query";
-import { GroupVerifier } from '@/app/components/GroupVerifier';
+// import { GroupVerifier } from '@/app/components/GroupVerifier';
 
 const queryClient = new QueryClient();
 
@@ -76,7 +76,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
     <WagmiProvider config={config}>
       <QueryClientProvider client={queryClient}>
         <ThemeAwareRainbowKitProvider>
-          <GroupVerifier />
+          {/* <GroupVerifier /> */}
           {children}
         </ThemeAwareRainbowKitProvider>
       </QueryClientProvider>
