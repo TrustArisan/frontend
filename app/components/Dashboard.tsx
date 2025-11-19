@@ -1,11 +1,15 @@
 'use client';
 
 import { motion } from 'framer-motion';
+import { useState, useMemo } from 'react';
 import { 
   MessageCircleMore, 
   Search,
   CirclePlus,
-  RotateCcw
+  RotateCcw,
+  X,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 import ThemeToggle from './ThemeToggle';
 import Link from 'next/link';
@@ -17,10 +21,44 @@ import { Avatar } from '@/app/components/Avatar';
 
 export default function Dashboard() {
   const { groups: groupsList, count, isLoading: isLoadingGroupsList, error: errorGroupsList, refetch } = useGroupsList();
+  const [searchQuery, setSearchQuery] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 6;
 
   async function updateGroupsLists() {
     await refetch();
   }
+
+  // Filter groups based on search query
+  const filteredGroups = useMemo(() => {
+    if (!searchQuery.trim()) return groupsList;
+    
+    const query = searchQuery.toLowerCase();
+    return groupsList.filter(group => 
+      group.title.toLowerCase().includes(query)
+    );
+  }, [groupsList, searchQuery]);
+
+  // Calculate pagination
+  const totalPages = Math.ceil(filteredGroups.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const currentGroups = filteredGroups.slice(startIndex, endIndex);
+
+  const clearSearch = () => {
+    setSearchQuery('');
+    setCurrentPage(1);
+  };
+
+  const handleSearch = (value: string) => {
+    setSearchQuery(value);
+    setCurrentPage(1); // Reset to first page when searching
+  };
+
+  const goToPage = (page: number) => {
+    setCurrentPage(page);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   return (
     <motion.div 
@@ -35,10 +73,20 @@ export default function Dashboard() {
       {/* Main Content */}
       <main className="container mx-auto px-6 py-12">
         {/* Page Title & Actions */}
-        <div className="flex flex-row justify-between items-center gap-4 mb-8">
+        <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4 mb-8">
           <div>
             <h1 className="text-3xl font-bold text-foreground mb-2">Available Groups</h1>
-            <p className="text-[#648196] text-lg">Total: <span className="font-semibold text-[#4f7a97]">{count}</span> groups</p>
+            <p className="text-[#648196] text-lg">
+              {searchQuery ? (
+                <>
+                  Found: <span className="font-semibold text-[#4f7a97]">{filteredGroups.length}</span> of <span className="font-semibold text-[#4f7a97]">{count}</span> groups
+                </>
+              ) : (
+                <>
+                  Total: <span className="font-semibold text-[#4f7a97]">{count}</span> groups
+                </>
+              )}
+            </p>
           </div>
           
           <div className="flex gap-3">
@@ -68,6 +116,35 @@ export default function Dashboard() {
           </div>
         </div>
 
+        {/* Search Bar */}
+        <div className="mb-8">
+          <div className="relative max-w-2xl">
+            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+              <Search className="text-[#5c6c74]" size={20} />
+            </div>
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => handleSearch(e.target.value)}
+              placeholder="Search groups by name..."
+              className="w-full pl-12 pr-12 py-3.5 bg-background border-2 border-[#648196]/20 rounded-xl text-foreground placeholder-[#5c6c74]/60 focus:outline-none focus:ring-2 focus:ring-[#5584a0] focus:border-transparent transition-all"
+            />
+            {searchQuery && (
+              <button
+                onClick={clearSearch}
+                className="absolute inset-y-0 right-0 pr-4 flex items-center text-[#5c6c74] hover:text-[#4f7a97] transition-colors"
+              >
+                <X size={20} />
+              </button>
+            )}
+          </div>
+          {searchQuery && (
+            <p className="text-sm text-[#5c6c74] mt-2 ml-1">
+              Searching for: <span className="font-medium text-[#4f7a97]">"{searchQuery}"</span>
+            </p>
+          )}
+        </div>
+
         {/* Loading State */}
         {isLoadingGroupsList ? (
           <Loading />
@@ -82,7 +159,7 @@ export default function Dashboard() {
 
             {/* Groups Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {groupsList.map((group, index) => (
+              {currentGroups.map((group, index) => (
                 <motion.div
                   key={group.id}
                   initial={{ opacity: 0, y: 20 }}
@@ -154,8 +231,92 @@ export default function Dashboard() {
               ))}
             </div>
 
+            {/* Pagination */}
+            {filteredGroups.length > itemsPerPage && (
+              <div className="mt-10 flex flex-col sm:flex-row items-center justify-between gap-4">
+                {/* Page Info */}
+                <p className="text-sm text-[#5c6c74]">
+                  Showing <span className="font-semibold text-[#4f7a97]">{startIndex + 1}</span> to{' '}
+                  <span className="font-semibold text-[#4f7a97]">{Math.min(endIndex, filteredGroups.length)}</span> of{' '}
+                  <span className="font-semibold text-[#4f7a97]">{filteredGroups.length}</span> groups
+                </p>
+
+                {/* Pagination Controls */}
+                <div className="flex items-center gap-2">
+                  {/* Previous Button */}
+                  <motion.button
+                    onClick={() => goToPage(currentPage - 1)}
+                    disabled={currentPage === 1}
+                    className={`p-2 rounded-lg transition-all ${
+                      currentPage === 1
+                        ? 'bg-[#5c6c74]/20 text-[#5c6c74]/50 cursor-not-allowed'
+                        : 'bg-[#5584a0] text-white hover:bg-[#4f7a97] shadow-sm'
+                    }`}
+                    whileHover={currentPage !== 1 ? { scale: 1.05 } : {}}
+                    whileTap={currentPage !== 1 ? { scale: 0.95 } : {}}
+                  >
+                    <ChevronLeft size={20} />
+                  </motion.button>
+
+                  {/* Page Numbers */}
+                  <div className="flex gap-1">
+                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                      <motion.button
+                        key={page}
+                        onClick={() => goToPage(page)}
+                        className={`min-w-[40px] h-10 px-3 rounded-lg font-medium transition-all ${
+                          currentPage === page
+                            ? 'bg-[#5584a0] text-white shadow-md'
+                            : 'bg-[#5584a0]/10 text-[#4f7a97] hover:bg-[#5584a0]/20'
+                        }`}
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                      >
+                        {page}
+                      </motion.button>
+                    ))}
+                  </div>
+
+                  {/* Next Button */}
+                  <motion.button
+                    onClick={() => goToPage(currentPage + 1)}
+                    disabled={currentPage === totalPages}
+                    className={`p-2 rounded-lg transition-all ${
+                      currentPage === totalPages
+                        ? 'bg-[#5c6c74]/20 text-[#5c6c74]/50 cursor-not-allowed'
+                        : 'bg-[#5584a0] text-white hover:bg-[#4f7a97] shadow-sm'
+                    }`}
+                    whileHover={currentPage !== totalPages ? { scale: 1.05 } : {}}
+                    whileTap={currentPage !== totalPages ? { scale: 0.95 } : {}}
+                  >
+                    <ChevronRight size={20} />
+                  </motion.button>
+                </div>
+              </div>
+            )}
+
+            {/* No Results State */}
+            {filteredGroups.length === 0 && searchQuery && !errorGroupsList && (
+              <div className="text-center py-20">
+                <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-[#4f7a97]/10 mb-6">
+                  <Search size={40} className="text-[#4f7a97]" />
+                </div>
+                <h3 className="text-2xl font-bold text-foreground mb-2">No Groups Found</h3>
+                <p className="text-[#648196] mb-4">
+                  No groups match "<span className="font-medium text-[#4f7a97]">{searchQuery}</span>"
+                </p>
+                <button
+                  onClick={clearSearch}
+                  className="inline-flex items-center gap-2 px-6 py-2.5 rounded-full bg-[#5584a0] hover:bg-[#4f7a97] text-white font-medium transition-all"
+                >
+                  <X size={18} />
+                  Clear Search
+                </button>
+              </div>
+            )}
+
             {/* Empty State */}
-            {groupsList.length === 0 && !errorGroupsList && (
+            {groupsList.length === 0 && !errorGroupsList && !searchQuery && (
               <div className="text-center py-20">
                 <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-[#4f7a97]/10 mb-6">
                   <Search size={40} className="text-[#4f7a97]" />
