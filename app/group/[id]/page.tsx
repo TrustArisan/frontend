@@ -12,6 +12,7 @@ import { ChevronLeft, Users, Percent, Coins, UsersRound, MessageCircleMore, Hand
 import { Avatar } from '@/app/components/Avatar';
 import Link from 'next/link';
 import ThemeToggle from '@/app/components/ThemeToggle';
+import Loading from '@/app/components/Loading';
 
 export default function GroupDetailPage() {
   const { id } = useParams();
@@ -139,11 +140,9 @@ export default function GroupDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background">
+      <div>
         <Header />
-        <div className="flex justify-center items-center h-[calc(100vh-80px)]">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
-        </div>
+        <Loading />
       </div>
     );
   }

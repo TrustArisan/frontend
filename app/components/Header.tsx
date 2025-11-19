@@ -11,7 +11,7 @@ export default function Header() {
                     background: linear-gradient(135deg, #5584a0 0%, #4f7a97 100%) !important;
                     color: white !important;
                     border-radius: 12px !important;
-                    padding: 11px 24px !important;
+                    padding: 0px 24px !important;
                     font-weight: 600 !important;
                     font-size: 14px !important;
                     border: none !important;
@@ -35,60 +35,7 @@ export default function Header() {
 
                 /* Account button - Ultra clean glass */
                 button[data-testid="rk-account-button"] {
-                    background: rgba(255, 255, 255, 0.95) !important;
-                    backdrop-filter: blur(12px) !important;
-                    -webkit-backdrop-filter: blur(12px) !important;
-                    color: #4f7a97 !important;
-                    border-radius: 12px !important;
-                    padding: 10px 18px !important;
-                    font-weight: 600 !important;
-                    font-size: 14px !important;
-                    border: 1px solid rgba(79, 122, 151, 0.15) !important;
-                    box-shadow: 
-                        0 2px 8px rgba(79, 122, 151, 0.06),
-                        0 1px 3px rgba(79, 122, 151, 0.04) !important;
-                    transition: all 0.2s ease !important;
-                }
-
-                button[data-testid="rk-account-button"]:hover {
-                    background: rgba(255, 255, 255, 1) !important;
-                    border-color: rgba(79, 122, 151, 0.25) !important;
-                    box-shadow: 
-                        0 4px 12px rgba(79, 122, 151, 0.1),
-                        0 2px 6px rgba(79, 122, 151, 0.06) !important;
-                    transform: translateY(-1px) !important;
-                }
-
-                button[data-testid="rk-account-button"] span,
-                button[data-testid="rk-account-button"] div {
-                    color: #4f7a97 !important;
-                    font-weight: 600 !important;
-                }
-
-                /* Avatar - Simple gold ring */
-                button[data-testid="rk-account-button"] img {
-                    border: 2px solid #eeb446 !important;
-                }
-
-                /* Chain button - Clean minimal */
-                button[aria-label*="Chain"] {
-                    background: rgba(255, 255, 255, 0.95) !important;
-                    backdrop-filter: blur(12px) !important;
-                    border: 1px solid rgba(79, 122, 151, 0.15) !important;
-                    border-radius: 12px !important;
-                    box-shadow: 
-                        0 2px 8px rgba(79, 122, 151, 0.06),
-                        0 1px 3px rgba(79, 122, 151, 0.04) !important;
-                    transition: all 0.2s ease !important;
-                }
-
-                button[aria-label*="Chain"]:hover {
-                    background: rgba(255, 255, 255, 1) !important;
-                    border-color: rgba(79, 122, 151, 0.25) !important;
-                    transform: translateY(-1px) !important;
-                    box-shadow: 
-                        0 4px 12px rgba(79, 122, 151, 0.1),
-                        0 2px 6px rgba(79, 122, 151, 0.06) !important;
+                    padding: 5px 10px !important;
                 }
             `}</style>
 

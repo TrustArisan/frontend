@@ -3,7 +3,6 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "./context/ThemeContext";
 import { Providers } from "./providers";
-import { GroupVerifier } from '@/app/components/GroupVerifier';
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -21,7 +20,6 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning className="light" style={{ colorScheme: 'light' }}>
       <body className={inter.className}>
         <Providers>
-          <GroupVerifier />
           <ThemeProvider
             attribute="class"
             defaultTheme="light"

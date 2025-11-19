@@ -11,6 +11,7 @@ import ThemeToggle from './ThemeToggle';
 import Link from 'next/link';
 import Header from '@/app/components/Header';
 import Footer from '@/app/components/Footer';
+import Loading from '@/app/components/Loading';
 import { useGroupsList } from '@/app/hooks/useGroupList';
 import { Avatar } from '@/app/components/Avatar';
 
@@ -34,7 +35,7 @@ export default function Dashboard() {
       {/* Main Content */}
       <main className="container mx-auto px-6 py-12">
         {/* Page Title & Actions */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
+        <div className="flex flex-row justify-between items-center gap-4 mb-8">
           <div>
             <h1 className="text-3xl font-bold text-foreground mb-2">Available Groups</h1>
             <p className="text-[#648196] text-lg">Total: <span className="font-semibold text-[#4f7a97]">{count}</span> groups</p>
@@ -44,39 +45,32 @@ export default function Dashboard() {
             <motion.button
               type="button"
               onClick={updateGroupsLists}
-              className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#5584a0] hover:bg-[#4f7a97] text-white font-medium transition-all shadow-sm hover:shadow-md"
+              className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-[#5584a0] hover:bg-[#4f7a97] text-white font-medium transition-all shadow-sm hover:shadow-md"
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
             >
               <RotateCcw size={18} />
-              <span className="hidden sm:inline">Reload</span>
+              <span className="hidden md:inline">Reload</span>
             </motion.button>
             
-            <Link href="/creategroup">
+            <Link className='flex items-center' href="/creategroup">
               <motion.button
-                className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#eeb446] hover:bg-[#daa23d] text-white font-medium transition-all shadow-sm hover:shadow-md"
+                className="flex items-center gap-2 h-full px-4 rounded-full bg-[#eeb446] hover:bg-[#daa23d] text-white font-medium transition-all shadow-sm hover:shadow-md"
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
               >
                 <CirclePlus size={18} />
-                <span className="hidden sm:inline">Create Group</span>
+                <span className="hidden md:inline">Create Group</span>
               </motion.button>
             </Link>
 
-            <ThemeToggle />
+            <ThemeToggle unhideText={true} injectClass='hidden md:inline' endMarginBool={false}/>
           </div>
         </div>
 
         {/* Loading State */}
         {isLoadingGroupsList ? (
-          <div className="flex justify-center items-center h-96">
-            <div className="relative">
-              <div className="animate-spin rounded-full h-16 w-16 border-4 border-[#4f7a97]/20 border-t-[#4f7a97]"></div>
-              <div className="absolute inset-0 flex items-center justify-center">
-                <div className="h-8 w-8 rounded-full bg-[#eeb446]/20"></div>
-              </div>
-            </div>
-          </div>
+          <Loading />
         ) : (
           <div>
             {/* Error State */}
@@ -185,24 +179,7 @@ export default function Dashboard() {
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-[#4f7a97]/10 mt-20">
-        <div className="container mx-auto px-6 py-8">
-          <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-            <p className="text-[#648196] text-sm">
-              © {new Date().getFullYear()} TrustArisan. Building trust through technology.
-            </p>
-            
-            <Link 
-              href="https://github.com/TrustArisan" 
-              target="_blank"
-              className="text-[#4f7a97] hover:text-[#eeb446] font-medium text-sm transition-colors flex items-center gap-2"
-            >
-              <span>View on GitHub</span>
-              <span>→</span>
-            </Link>
-          </div>
-        </div>
-      </footer>
+      <Footer />
     </motion.div>
   );
 }

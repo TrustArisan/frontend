@@ -414,7 +414,7 @@ export default function CreateGroupPage() {
         </div>
       </div>
       <div className="fixed bottom-4 right-4 z-50">
-        <ThemeToggle />
+        <ThemeToggle unhideText={true} injectClass='hidden' endMarginBool={false}/>
       </div>
     </div>
   );
