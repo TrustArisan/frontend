@@ -117,7 +117,7 @@ export default function Dashboard() {
                     </div>
                     <div className="w-full bg-[#4f7a97]/10 rounded-full h-2.5 overflow-hidden">
                       <div 
-                        className="bg-gradient-to-r from-[#eeb446] to-[#4f7a97] h-full rounded-full transition-all duration-500"
+                        className="bg-linear-to-r from-[#eeb446] to-[#4f7a97] h-full rounded-full transition-all duration-500"
                         style={{ width: `${(group.currentSize / group.size) * 100}%` }}
                       />
                     </div>
@@ -132,7 +132,7 @@ export default function Dashboard() {
                         whileTap={{ scale: 0.98 }}
                       >
                         <Search size={16} />
-                        <span>Check</span>
+                        <span>Check Room</span>
                       </motion.button>
                     </Link>
                     
@@ -143,13 +143,13 @@ export default function Dashboard() {
                         whileTap={{ scale: 0.98 }}
                       >
                         <MessageCircleMore size={16} />
-                        <span>Join</span>
+                        <span>Join Chat</span>
                       </motion.button>
                     </Link>
                   </div>
 
                   {/* Decorative Element */}
-                  <div className="absolute top-0 right-0 w-20 h-20 bg-gradient-to-br from-[#eeb446]/10 to-transparent rounded-bl-full opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                  <div className="absolute top-0 right-0 w-20 h-20 bg-linear-to-br from-[#eeb446]/10 to-transparent rounded-bl-full opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                 </motion.div>
               ))}
             </div>
