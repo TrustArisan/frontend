@@ -30,11 +30,13 @@ import {
   TrendingUp,
   AlertCircle,
   Bell,
+  Plus,
 } from "lucide-react";
 import { Avatar } from "@/app/components/Avatar";
 import Link from "next/link";
 import ThemeToggle from "@/app/components/ThemeToggle";
 import Loading from "@/app/components/Loading";
+
 
 export default function GroupDetailPage() {
   const { id } = useParams();
@@ -340,7 +342,7 @@ export default function GroupDetailPage() {
               </div>
 
               <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg p-3 mb-6 flex items-start gap-2">
-                <AlertCircle className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
+                <AlertCircle className="w-4 h-4 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
                 <p className="text-xs text-blue-900 dark:text-blue-300 text-left">
                   The upgrade cost will be sent to the platform wallet. This is a one-time payment for each capacity tier.
                 </p>
@@ -394,7 +396,7 @@ export default function GroupDetailPage() {
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4 }}
-            className="mt-4 bg-[#eeb446]/10 border border-[#eeb446]/30 rounded-xl p-4 shadow-sm mb-4"
+            className="mt-4 bg-[#eeb446]/10 border border-[#eeb446]/30 rounded-xl p-4 shadow-sm"
           >
             <div className="flex items-start justify-between gap-4">
               <div className="flex items-start gap-3 flex-1">
@@ -412,7 +414,7 @@ export default function GroupDetailPage() {
               </div>
               <motion.button
                 onClick={() => router.push(`/group/${id}/proposals`)}
-                className="self-center px-4 py-2 rounded-lg bg-[#eeb446] hover:bg-[#d9a33f] text-white font-medium text-sm transition-colors shadow-sm whitespace-nowrap"
+                className="px-4 py-2 rounded-lg bg-[#eeb446] hover:bg-[#d9a33f] text-white font-medium text-sm transition-colors shadow-sm whitespace-nowrap"
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
               >
@@ -713,7 +715,7 @@ export default function GroupDetailPage() {
                         {isCapacityNearFull && (
                           <div className="mt-4 pt-4 border-t border-[#eeb446]/20">
                             <div className="flex items-start gap-2 text-xs text-[#5c6c74] bg-[#eeb446]/10 border border-[#eeb446]/20 rounded-lg p-3">
-                              <AlertCircle className="w-4 h-4 text-[#eeb446] shrink-0 mt-0.5" />
+                              <AlertCircle className="w-4 h-4 text-[#eeb446] flex-shrink-0 mt-0.5" />
                               <p>
                                 {isCapacityFull 
                                   ? 'Your group has reached maximum capacity. Upgrade now to accept new members.'
@@ -772,6 +774,16 @@ export default function GroupDetailPage() {
                         )}
                       </motion.button>
                     )}
+
+                    {/* Create Proposal Button - For all members */}
+                    <motion.button
+                      onClick={() => router.push(`/group/${id}/create-proposal`)}
+                      className="flex grow justify-center px-5 py-3 rounded-full bg-[#eeb446] hover:bg-[#d9a33f] text-white font-medium text-md transition-colors border border-[hsl(var(--foreground))]/10 shadow-sm hover:shadow-md"
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                    >
+                      <Plus className="me-2 font-thin px-0.5" /> Create Proposal
+                    </motion.button>
                   </>
                 )}
                 {/* Redirect to chatroom */}
