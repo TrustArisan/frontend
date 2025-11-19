@@ -29,6 +29,7 @@ import {
   List,
   TrendingUp,
   AlertCircle,
+  Bell,
 } from "lucide-react";
 import { Avatar } from "@/app/components/Avatar";
 import Link from "next/link";
@@ -45,6 +46,7 @@ export default function GroupDetailPage() {
   const [capacityUpgradeCost, setCapacityUpgradeCost] = useState<bigint>(BigInt(0));
   const [nextCapacityTier, setNextCapacityTier] = useState<number>(0);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [pendingProposalsCount, setPendingProposalsCount] = useState<number>(0);
   const {
     writeContractAsync,
     isPending,
@@ -83,7 +85,7 @@ export default function GroupDetailPage() {
       setIsLoading(true);
 
       // Fetch group details
-      const [detail, settings, upgradeCost, nextTier] = await Promise.all([
+      const [detail, settings, upgradeCost, nextTier, proposalsCount] = await Promise.all([
         publicClient.readContract({
           address: id as Address,
           abi: GROUP_ABI,
@@ -104,10 +106,16 @@ export default function GroupDetailPage() {
           abi: GROUP_ABI,
           functionName: "getNextCapacityTier",
         }),
+        publicClient.readContract({
+          address: id as Address,
+          abi: GROUP_ABI,
+          functionName: "getIncompleteProposalsCount",
+        }),
       ]);
 
       setCapacityUpgradeCost(upgradeCost as bigint);
       setNextCapacityTier(Number(nextTier));
+      setPendingProposalsCount(Number(proposalsCount));
 
       setGroup({
         id,
@@ -379,6 +387,40 @@ export default function GroupDetailPage() {
           <ChevronLeft size={18} className="me-4" />
           Back to groups
         </motion.button>
+
+        {/* Pending Proposals Alert - Only show if there are pending proposals and user is a member */}
+        {pendingProposalsCount > 0 && isMember && !group.settings.openJoinEnabled && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4 }}
+            className="mt-4 bg-[#eeb446]/10 border border-[#eeb446]/30 rounded-xl p-4 shadow-sm"
+          >
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex items-start gap-3 flex-1">
+                <div className="p-2 rounded-lg bg-[#eeb446]/20">
+                  <Bell className="w-5 h-5 text-[#eeb446]" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-[#4f7a97] mb-1">
+                    {pendingProposalsCount} Pending Join Request{pendingProposalsCount !== 1 ? 's' : ''}
+                  </h3>
+                  <p className="text-sm text-muted-foreground">
+                    There {pendingProposalsCount === 1 ? 'is' : 'are'} {pendingProposalsCount} membership proposal{pendingProposalsCount !== 1 ? 's' : ''} waiting for your vote.
+                  </p>
+                </div>
+              </div>
+              <motion.button
+                onClick={() => router.push(`/group/${id}/proposals`)}
+                className="px-4 py-2 rounded-lg bg-[#eeb446] hover:bg-[#d9a33f] text-white font-medium text-sm transition-colors shadow-sm whitespace-nowrap"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+              >
+                View Proposals
+              </motion.button>
+            </div>
+          </motion.div>
+        )}
 
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -703,14 +745,34 @@ export default function GroupDetailPage() {
                 </motion.button>
                 {/* View Members */}
                 {isMember && (
-                  <motion.button
-                    onClick={() => router.push(`/group/${id}/members`)}
-                    className="flex grow justify-center px-5 py-3 rounded-full bg-primary text-primary-foreground font-medium text-md hover:bg-primary/90 transition-colors border border-[hsl(var(--foreground))]/10 shadow-sm hover:shadow-md"
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                  >
-                    <List className="me-2 font-thin px-0.5" /> View Members
-                  </motion.button>
+                  <>
+                    <motion.button
+                      onClick={() => router.push(`/group/${id}/members`)}
+                      className="flex grow justify-center px-5 py-3 rounded-full bg-primary text-primary-foreground font-medium text-md hover:bg-primary/90 transition-colors border border-[hsl(var(--foreground))]/10 shadow-sm hover:shadow-md"
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                    >
+                      <List className="me-2 font-thin px-0.5" /> View Members
+                    </motion.button>
+                    
+                    {/* View Proposals Button - Only show when Open Join is disabled */}
+                    {!group.settings.openJoinEnabled && (
+                      <motion.button
+                        onClick={() => router.push(`/group/${id}/proposals`)}
+                        className="relative flex grow justify-center px-5 py-3 rounded-full bg-primary text-primary-foreground font-medium text-md hover:bg-primary/90 transition-colors border border-[hsl(var(--foreground))]/10 shadow-sm hover:shadow-md"
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                      >
+                        <Bell className="me-2 font-thin px-0.5" /> 
+                        View Proposals
+                        {pendingProposalsCount > 0 && (
+                          <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center">
+                            {pendingProposalsCount}
+                          </span>
+                        )}
+                      </motion.button>
+                    )}
+                  </>
                 )}
                 {/* Redirect to chatroom */}
                 <Link
