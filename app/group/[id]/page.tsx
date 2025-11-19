@@ -1,18 +1,37 @@
-'use client';
+"use client";
 
-import { useParams } from 'next/navigation';
-import { useEffect, useState } from 'react';
-import { usePublicClient, useAccount, useBalance, useWriteContract } from 'wagmi';
-import { Address, isAddress, formatEther } from 'viem';
-import { GROUP_ABI } from '@/app/utils/TrustArisanGroupABI';
-import Header from '@/app/components/Header';
-import { motion } from 'framer-motion';
-import { useRouter } from 'next/navigation';
-import { ChevronLeft, Users, Percent, Coins, UsersRound, MessageCircleMore, HandCoins, Bitcoin, RotateCcw, Boxes, BadgeCheck, Badge, List } from 'lucide-react';
-import { Avatar } from '@/app/components/Avatar';
-import Link from 'next/link';
-import ThemeToggle from '@/app/components/ThemeToggle';
-import Loading from '@/app/components/Loading';
+import { useParams } from "next/navigation";
+import { useEffect, useState } from "react";
+import {
+  usePublicClient,
+  useAccount,
+  useBalance,
+  useWriteContract,
+} from "wagmi";
+import { Address, isAddress, formatEther } from "viem";
+import { GROUP_ABI } from "@/app/utils/TrustArisanGroupABI";
+import Header from "@/app/components/Header";
+import { motion } from "framer-motion";
+import { useRouter } from "next/navigation";
+import {
+  ChevronLeft,
+  Users,
+  Percent,
+  Coins,
+  UsersRound,
+  MessageCircleMore,
+  HandCoins,
+  Bitcoin,
+  RotateCcw,
+  Boxes,
+  BadgeCheck,
+  Badge,
+  List,
+} from "lucide-react";
+import { Avatar } from "@/app/components/Avatar";
+import Link from "next/link";
+import ThemeToggle from "@/app/components/ThemeToggle";
+import Loading from "@/app/components/Loading";
 
 export default function GroupDetailPage() {
   const { id } = useParams();
@@ -21,14 +40,28 @@ export default function GroupDetailPage() {
   const { address, isConnected } = useAccount();
   const [isMember, setIsMember] = useState<boolean>(false);
   const [isCoordinator, setIsCoordinator] = useState<boolean>(false);
-  const { writeContractAsync, isPending, error: errorWriteContract } = useWriteContract();
+  const {
+    writeContractAsync,
+    isPending,
+    error: errorWriteContract,
+  } = useWriteContract();
 
   // Convert id to Address
-  const groupAddress = id && typeof id === 'string' ? (isAddress(id) ? id as Address : undefined) : undefined;
-  const { data: balanceData, isLoading: isLoadingBalance, isFetching: isFetchingBalance, refetch: balanceRefetch } = useBalance({
+  const groupAddress =
+    id && typeof id === "string"
+      ? isAddress(id)
+        ? (id as Address)
+        : undefined
+      : undefined;
+  const {
+    data: balanceData,
+    isLoading: isLoadingBalance,
+    isFetching: isFetchingBalance,
+    refetch: balanceRefetch,
+  } = useBalance({
     address: groupAddress,
-  })
-  
+  });
+
   const [group, setGroup] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -40,22 +73,22 @@ export default function GroupDetailPage() {
 
   async function fetchGroupDetails() {
     if (!publicClient || !id) return;
-      
+
     try {
       setIsLoading(true);
-      
+
       // Fetch group details
       const [detail, settings] = await Promise.all([
         publicClient.readContract({
           address: id as Address,
           abi: GROUP_ABI,
-          functionName: 'getGroupDetail',
+          functionName: "getGroupDetail",
         }),
         publicClient.readContract({
           address: id as Address,
           abi: GROUP_ABI,
-          functionName: 'getGroupSettings',
-        })
+          functionName: "getGroupSettings",
+        }),
       ]);
 
       setGroup({
@@ -64,14 +97,16 @@ export default function GroupDetailPage() {
         settings: {
           ...settings,
           contributionAmount: Number(settings.contributionAmountInWei),
-          coordinatorCommissionPercentage: Number(settings.coordinatorCommissionPercentage),
+          coordinatorCommissionPercentage: Number(
+            settings.coordinatorCommissionPercentage
+          ),
           prizePercentage: Number(settings.prizePercentage),
-          maxCapacity: Number(settings.maxCapacity)
-        }
+          maxCapacity: Number(settings.maxCapacity),
+        },
       });
     } catch (e) {
-      console.error('Error fetching group details:', e);
-      setError('Failed to load group details');
+      console.error("Error fetching group details:", e);
+      setError("Failed to load group details");
     } finally {
       setIsLoading(false);
     }
@@ -90,18 +125,19 @@ export default function GroupDetailPage() {
         publicClient.readContract({
           address: groupAddress,
           abi: GROUP_ABI,
-          functionName: 'isMember',
-          args: [address]
-        })
+          functionName: "isMember",
+          args: [address],
+        }),
       ]);
 
       // Since we've ensured group is loaded, we can safely access group.settings
-      const isUserCoordinator = group.settings.coordinator.walletAddress === address;
-      
+      const isUserCoordinator =
+        group.settings.coordinator.walletAddress === address;
+
       setIsMember(Boolean(memberStatus));
       setIsCoordinator(isUserCoordinator);
     } catch (error) {
-      console.error('Error checking membership:', error);
+      console.error("Error checking membership:", error);
       setIsMember(false);
       setIsCoordinator(false);
     }
@@ -109,41 +145,44 @@ export default function GroupDetailPage() {
 
   async function handleJoinGroup() {
     if (!groupAddress || !isAddress(groupAddress)) {
-      console.error('Invalid group address');
+      console.error("Invalid group address");
       return;
     }
 
     // Get telegram username from user (for now, we'll use a placeholder)
-    const telegramUsername = prompt('Please enter your Telegram username:') || '';
-    
+    const telegramUsername =
+      prompt("Please enter your Telegram username:") || "";
+
     if (!telegramUsername.trim()) {
-      alert('Telegram username is required to join the group');
+      alert("Telegram username is required to join the group");
       return;
     }
 
     try {
-      const functionName = group.settings.openJoinEnabled ? 'joinGroupNoApproval' : 'joinGroup';
-      
+      const functionName = group.settings.openJoinEnabled
+        ? "joinGroupNoApproval"
+        : "joinGroup";
+
       const txHash = await writeContractAsync({
         address: groupAddress as Address,
         abi: GROUP_ABI,
         functionName: functionName,
         args: [telegramUsername],
       });
-      
+
       console.log(`${functionName} transaction sent:`, txHash);
-      
+
       // Optionally refetch data after successful join
       await reloadData();
     } catch (error: any) {
-      console.error('Error joining group:', error);
-      alert(`Failed to join group: ${error.message || 'Unknown error'}`);
+      console.error("Error joining group:", error);
+      alert(`Failed to join group: ${error.message || "Unknown error"}`);
     }
   }
-  
+
   async function toggleOpenJoin() {
     if (!groupAddress || !isAddress(groupAddress)) {
-      console.error('Invalid group address');
+      console.error("Invalid group address");
       return;
     }
 
@@ -151,13 +190,13 @@ export default function GroupDetailPage() {
       const txHash = await writeContractAsync({
         address: groupAddress as Address,
         abi: GROUP_ABI,
-        functionName: 'toggleOpenJoin',
+        functionName: "toggleOpenJoin",
         args: [!group.settings.openJoinEnabled],
       });
-      
-      console.log('Toggle transaction sent:', txHash);
+
+      console.log("Toggle transaction sent:", txHash);
     } catch (error: any) {
-      console.error('Error toggling open join:', error);
+      console.error("Error toggling open join:", error);
     }
   }
 
@@ -168,7 +207,7 @@ export default function GroupDetailPage() {
 
   useEffect(() => {
     if (isConnected && address && group != null) {
-      checkMembership(); 
+      checkMembership();
     }
   }, [isConnected, address, group]);
 
@@ -187,7 +226,7 @@ export default function GroupDetailPage() {
         <Header />
         <div className="container mx-auto px-4 py-8">
           <div className="bg-destructive/10 border border-destructive/30 text-destructive dark:text-destructive-foreground p-4 rounded-lg">
-            {error || 'Group not found'}
+            {error || "Group not found"}
           </div>
         </div>
       </div>
@@ -197,7 +236,7 @@ export default function GroupDetailPage() {
   return (
     <div className="min-h-screen bg-background">
       <Header />
-      
+
       <main className="container mx-auto px-4 py-8">
         <motion.button
           onClick={() => router.push("/")}
@@ -205,7 +244,7 @@ export default function GroupDetailPage() {
           whileHover={{ x: -4 }}
           whileTap={{ scale: 0.95 }}
         >
-          <ChevronLeft size={18} className='me-4'/>
+          <ChevronLeft size={18} className="me-4" />
           Back to groups
         </motion.button>
 
@@ -216,15 +255,23 @@ export default function GroupDetailPage() {
           className="relative group bg-card rounded-xl border border-[#4f7a97]/10 hover:border-[#4f7a97]/30 hover:shadow-xl transition-all duration-300 p-6 shadow-sm"
         >
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
-            <div className='flex w-full md:flex-row flex-col items-center place-items-center justify-items-center'>
-                <Avatar name={group.title} size="xxl" className="md:me-4 md:mb-0 mb-4 ring-4 ring-[#eeb446]/20" />
-                <div>
-                    <h1 className="text-3xl font-bold mb-1 md:text-start text-center">{group.settings.title}</h1>
-                    <p className="text-muted-foreground md:text-start text-center">
-                        Managed by {group.settings.coordinator.telegramUsername}
-                    </p>
-                    <p className='text-xs md:text-start text-center'>Group ID: {id}</p>
-                </div>
+            <div className="flex w-full md:flex-row flex-col items-center place-items-center justify-items-center">
+              <Avatar
+                name={group.title}
+                size="xxl"
+                className="md:me-4 md:mb-0 mb-4 ring-4 ring-[#eeb446]/20"
+              />
+              <div>
+                <h1 className="text-3xl font-bold mb-1 md:text-start text-center">
+                  {group.settings.title}
+                </h1>
+                <p className="text-muted-foreground md:text-start text-center">
+                  Managed by {group.settings.coordinator.telegramUsername}
+                </p>
+                <p className="text-xs md:text-start text-center">
+                  Group ID: {id}
+                </p>
+              </div>
             </div>
           </div>
 
@@ -235,9 +282,9 @@ export default function GroupDetailPage() {
                 <span className="text-sm font-medium">Members</span>
               </div>
               <p className="text-2xl font-semibold">
-                {group.membersCount?.toString() || '0'}
+                {group.membersCount?.toString() || "0"}
                 <span className="text-muted-foreground text-sm ml-1">
-                  / {group.settings.maxCapacity?.toString() || '0'}
+                  / {group.settings.maxCapacity?.toString() || "0"}
                 </span>
               </p>
             </div>
@@ -248,16 +295,18 @@ export default function GroupDetailPage() {
                 <span className="text-sm font-medium">Contribution</span>
               </div>
               <p className="text-2xl font-semibold">
-                {group.settings.contributionAmount ? 
-                  `${(group.settings.contributionAmount / 1e18)} ETH` : 
-                  'N/A'}
+                {group.settings.contributionAmount
+                  ? `${group.settings.contributionAmount / 1e18} ETH`
+                  : "N/A"}
               </p>
             </div>
 
             <div className="bg-muted/50 p-4 rounded-lg">
               <div className="flex items-center gap-2 text-muted-foreground mb-1">
                 <Percent size={18} />
-                <span className="text-sm font-medium">Coordinator Commission Percentage</span>
+                <span className="text-sm font-medium">
+                  Coordinator Commission Percentage
+                </span>
               </div>
               <p className="text-2xl font-semibold">
                 {group.settings.coordinatorCommissionPercentage}%
@@ -279,15 +328,16 @@ export default function GroupDetailPage() {
                 <Bitcoin size={18} />
                 <span className="text-sm font-medium">Current Pool</span>
               </div>
-              {!(isLoadingBalance || isFetchingBalance) ? ((
+              {!(isLoadingBalance || isFetchingBalance) ? (
                 <p className="text-2xl font-semibold">
-                    {balanceData?.value ? formatEther(balanceData.value) : '0'} ETH
+                  {balanceData?.value ? formatEther(balanceData.value) : "0"}{" "}
+                  ETH
                 </p>
-                )) : (
-                    <div className="animate-pulse space-y-2">
-                        <div className="w-32 h-8 bg-gray-300 rounded"></div>
-                    </div>
-                )}
+              ) : (
+                <div className="animate-pulse space-y-2">
+                  <div className="w-32 h-8 bg-gray-300 rounded"></div>
+                </div>
+              )}
             </div>
           </div>
 
@@ -296,87 +346,170 @@ export default function GroupDetailPage() {
             <h2 className="text-xl font-semibold mb-4">About This Group</h2>
             <div className="space-y-4">
               <p className="text-muted-foreground">
-                This is a TrustArisan group where members contribute {group.settings.contributionAmount / 1e18} ETH per cycle. 
-                The coordinator takes a {group.settings.coordinatorCommissionPercentage}% commission, and the prize pool 
-                is {group.settings.prizePercentage}% of the total contributions. Commission is subject to 5% platform fee.
+                This is a TrustArisan group where members contribute{" "}
+                {group.settings.contributionAmount / 1e18} ETH per cycle. The
+                coordinator takes a{" "}
+                {group.settings.coordinatorCommissionPercentage}% commission,
+                and the prize pool is {group.settings.prizePercentage}% of the
+                total contributions. Commission is subject to 5% platform fee.
               </p>
             </div>
           </div>
-          
+
           {/* Decorative Element */}
           <div className="absolute top-0 right-0 w-20 h-20 bg-linear-to-br from-[#eeb446]/10 to-transparent rounded-bl-full opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
         </motion.div>
         <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4 }}
-            className="bg-card rounded-xl border border-[hsl(var(--foreground))]/20 p-6 shadow-sm mt-6"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4 }}
+          className="bg-card rounded-xl border border-[hsl(var(--foreground))]/20 p-6 shadow-sm mt-6"
         >
-            <div>
-                {/* <h2 className="text-xl font-semibold mb-4">Controls</h2> */}
-                <div className="flex space-y-4">
-                    <div className='w-full grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4'>
-                        {/* Coordinator Only Group Settings */}
-                        {isCoordinator && (
-                          <motion.button
-                              type='button'
-                              onClick={toggleOpenJoin}
-                              className="flex justify-center px-5 py-3 rounded-full bg-primary text-primary-foreground font-medium text-md hover:bg-primary/90 transition-colors border border-[hsl(var(--foreground))]/10 shadow-sm hover:shadow-md"
-                              whileHover={{ scale: 1.05 }}
-                              whileTap={{ scale: 0.95 }}
-                              >
-                                {group.settings.openJoinEnabled ? (
-                                  <BadgeCheck className='me-2 font-thin px-0.5'/>
-                                ) : (
-                                  <Badge className='me-2 font-thin px-0.5'/>
-                                )}
-                               Toggle Open Join
-                          </motion.button>
-                        )}
-                        {/* Can only join group when wallet is connected AND not a member */}
+          <div>
+            {/* <h2 className="text-xl font-semibold mb-4">Controls</h2> */}
+            <div className="flex space-y-4">
+              <div className="w-full grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                {/* Coordinator Only Group Settings */}
+                {/* Open Join Toggle - Coordinator Only */}
+                {isCoordinator && (
+                  <div className="col-span-1 sm:col-span-2 md:col-span-3 lg:col-span-4">
+                    <div className="bg-muted/50 rounded-xl p-4 border border-[hsl(var(--foreground))]/10">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div
+                            className={`p-2.5 rounded-lg transition-colors ${
+                              group.settings.openJoinEnabled
+                                ? "bg-emerald-100"
+                                : "bg-muted"
+                            }`}
+                          >
+                            {group.settings.openJoinEnabled ? (
+                              <BadgeCheck className="w-5 h-5 text-emerald-600" />
+                            ) : (
+                              <Badge className="w-5 h-5 text-muted-foreground" />
+                            )}
+                          </div>
+                          <div>
+                            <h3 className="font-semibold">Open Join</h3>
+                            <p className="text-xs text-muted-foreground mt-0.5">
+                              {group.settings.openJoinEnabled
+                                ? "Members can join directly"
+                                : "Requires approval to join"}
+                            </p>
+                          </div>
+                        </div>
+
                         <motion.button
-                            onClick={handleJoinGroup}
-                            className={((isConnected && !isMember) ? "" : "text-[hsl(var(--foreground))]/25 bg-gray-600/20 ") + "flex flex-initial justify-center px-5 py-3 rounded-full bg-primary text-primary-foreground font-medium text-md hover:bg-primary/90 transition-colors border border-[hsl(var(--foreground))]/10 shadow-sm hover:shadow-md "}
-                            whileHover={(isConnected && !isMember) ? { scale: 1.05 } : {}}
-                            whileTap={{ scale: 0.95 }}
-                            disabled={(!isConnected || isMember)}
-                            >
-                            <UsersRound className='me-2 font-thin px-0.5'/> Join Group
+                          onClick={toggleOpenJoin}
+                          disabled={isPending}
+                          className={`relative w-14 h-7 rounded-full transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+                            group.settings.openJoinEnabled
+                              ? "bg-emerald-500 focus:ring-emerald-500"
+                              : 'bg-slate-400 focus:ring-slate-400'
+                          } ${
+                            isPending
+                              ? "opacity-50 cursor-not-allowed"
+                              : "cursor-pointer"
+                          }`}
+                          whileTap={{ scale: 0.95 }}
+                        >
+                          <motion.div
+                            className="absolute top-0.5 left-0.5 w-6 h-6 bg-white rounded-full shadow-md"
+                            animate={{
+                              x: group.settings.openJoinEnabled ? 28 : 0,
+                            }}
+                            transition={{
+                              type: "spring",
+                              stiffness: 500,
+                              damping: 30,
+                            }}
+                          />
                         </motion.button>
-                        {/* View Members */}
-                        {isMember && (
-                          <motion.button
-                              onClick={() => router.push(`/group/${id}/members`)}
-                              className="flex grow justify-center px-5 py-3 rounded-full bg-primary text-primary-foreground font-medium text-md hover:bg-primary/90 transition-colors border border-[hsl(var(--foreground))]/10 shadow-sm hover:shadow-md"
-                              whileHover={{ scale: 1.05 }}
-                              whileTap={{ scale: 0.95 }}
-                              >
-                              <List className='me-2 font-thin px-0.5'/> View Members
-                          </motion.button>
-                        )}
-                        {/* Redirect to chatroom */}
-                        <Link className='flex flex-initial' target='_blank' href={group.settings.telegramGroupUrl} rel='noopener noreferrer'>
-                            <motion.button
-                                className="flex grow justify-center px-5 py-3 rounded-full bg-primary text-primary-foreground font-medium text-md hover:bg-primary/90 transition-colors border border-[hsl(var(--foreground))]/10 shadow-sm hover:shadow-md"
-                                whileHover={{ scale: 1.05 }}
-                                whileTap={{ scale: 0.95 }}
-                                >
-                                <MessageCircleMore className='me-2 font-thin px-0.5'/> Join Chat
-                            </motion.button>
-                        </Link>
-                        {/* Refetch data */}
-                        <motion.button
-                            type='button'
-                            onClick={reloadData}
-                            className="flex flex-initial justify-center px-5 py-3 rounded-full bg-primary text-primary-foreground font-medium text-md hover:bg-primary/90 transition-colors border border-[hsl(var(--foreground))]/10 shadow-sm hover:shadow-md"
-                            whileHover={{ scale: 1.05 }}
-                            whileTap={{ scale: 0.95 }}
-                            >
-                            <RotateCcw className='me-2 font-thin px-0.5'/> Reload Data
-                        </motion.button>
-                        <ThemeToggle unhideText={true}/>
+                      </div>
+
+                      <div className="mt-4 pt-4 border-t border-[hsl(var(--foreground))]/10">
+                        <div
+                          className={`text-xs font-medium px-3 py-2 rounded-lg ${
+                            group.settings.openJoinEnabled
+                              ? "bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950 dark:text-emerald-400 dark:border-emerald-800"
+                              : "bg-muted text-muted-foreground border border-[hsl(var(--foreground))]/10"
+                          }`}
+                        >
+                          {group.settings.openJoinEnabled ? (
+                            <div className="flex items-center gap-2">
+                              <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
+                              <span>
+                                Group is open - Anyone can join immediately
+                              </span>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-2">
+                              <div className="w-1.5 h-1.5 bg-muted-foreground rounded-full" />
+                              <span>
+                                Group is closed - Join requests need approval
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
                     </div>
-                </div>
+                  </div>
+                )}
+                {/* Can only join group when wallet is connected AND not a member */}
+                <motion.button
+                  onClick={handleJoinGroup}
+                  className={
+                    (isConnected && !isMember
+                      ? ""
+                      : "text-[hsl(var(--foreground))]/25 bg-gray-600/20 ") +
+                    "flex flex-initial justify-center px-5 py-3 rounded-full bg-primary text-primary-foreground font-medium text-md hover:bg-primary/90 transition-colors border border-[hsl(var(--foreground))]/10 shadow-sm hover:shadow-md "
+                  }
+                  whileHover={isConnected && !isMember ? { scale: 1.05 } : {}}
+                  whileTap={{ scale: 0.95 }}
+                  disabled={!isConnected || isMember}
+                >
+                  <UsersRound className="me-2 font-thin px-0.5" /> Join Group
+                </motion.button>
+                {/* View Members */}
+                {isMember && (
+                  <motion.button
+                    onClick={() => router.push(`/group/${id}/members`)}
+                    className="flex grow justify-center px-5 py-3 rounded-full bg-primary text-primary-foreground font-medium text-md hover:bg-primary/90 transition-colors border border-[hsl(var(--foreground))]/10 shadow-sm hover:shadow-md"
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                  >
+                    <List className="me-2 font-thin px-0.5" /> View Members
+                  </motion.button>
+                )}
+                {/* Redirect to chatroom */}
+                <Link
+                  className="flex flex-initial"
+                  target="_blank"
+                  href={group.settings.telegramGroupUrl}
+                  rel="noopener noreferrer"
+                >
+                  <motion.button
+                    className="flex grow justify-center px-5 py-3 rounded-full bg-primary text-primary-foreground font-medium text-md hover:bg-primary/90 transition-colors border border-[hsl(var(--foreground))]/10 shadow-sm hover:shadow-md"
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                  >
+                    <MessageCircleMore className="me-2 font-thin px-0.5" /> Join
+                    Chat
+                  </motion.button>
+                </Link>
+                {/* Refetch data */}
+                <motion.button
+                  type="button"
+                  onClick={reloadData}
+                  className="flex flex-initial justify-center px-5 py-3 rounded-full bg-primary text-primary-foreground font-medium text-md hover:bg-primary/90 transition-colors border border-[hsl(var(--foreground))]/10 shadow-sm hover:shadow-md"
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  <RotateCcw className="me-2 font-thin px-0.5" /> Reload Data
+                </motion.button>
+                <ThemeToggle unhideText={true} />
+              </div>
+            </div>
           </div>
         </motion.div>
       </main>

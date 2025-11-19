@@ -8,7 +8,7 @@ import { GROUP_ABI } from '@/app/utils/TrustArisanGroupABI';
 import Header from '@/app/components/Header';
 import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
-import { ChevronLeft, Users, Shield, User, Wallet } from 'lucide-react';
+import { ChevronLeft, Users, Shield, User, Wallet, CheckCircle, XCircle } from 'lucide-react';
 import Loading from '@/app/components/Loading';
 
 interface Member {
@@ -114,8 +114,8 @@ export default function MembersPage() {
       <div className="min-h-screen bg-background">
         <Header />
         <div className="container mx-auto px-4 py-8">
-          <div className="bg-destructive/10 border border-destructive/30 text-destructive dark:text-destructive-foreground p-4 rounded-lg">
-            {error}
+          <div className="bg-red-50 border border-red-200 text-red-700 p-6 rounded-xl">
+            <p className="font-medium">{error}</p>
           </div>
         </div>
       </div>
@@ -129,103 +129,122 @@ export default function MembersPage() {
       <main className="container mx-auto px-4 py-8">
         <motion.button
           onClick={() => router.push(`/group/${id}`)}
-          className="flex pe-8 py-3 items-center rounded-full bg-primary text-primary-foreground font-medium text-md hover:bg-primary/90 transition-colors mb-6"
+          className="flex items-center justify-center w-10 h-10 rounded-full bg-[#5584a0] text-white font-bold text-lg hover:bg-[#4f7a97] transition-colors shadow-sm mb-6"
           whileHover={{ x: -4 }}
           whileTap={{ scale: 0.95 }}
         >
-          <ChevronLeft size={18} className='me-4'/>
-          Back to Group
+          <ChevronLeft size={24} />
         </motion.button>
 
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4 }}
-          className="bg-card rounded-xl border border-[#4f7a97]/10 hover:border-[#4f7a97]/30 hover:shadow-xl transition-all duration-300 p-6 shadow-sm"
+          className="bg-card rounded-2xl border border-[#648196]/20 hover:shadow-xl transition-all duration-300 p-8 shadow-sm"
         >
-          <div className="flex items-center gap-3 mb-6">
-            <Users size={24} className="text-primary" />
-            <h1 className="text-2xl font-bold">Group Members</h1>
-            <span className="bg-primary/10 text-primary px-3 py-1 rounded-full text-sm font-medium">
-              {members.length} Members
+          <div className="flex items-center gap-3 mb-8">
+            <div className="p-2 bg-[#5584a0]/10 rounded-lg">
+              <Users size={28} className="text-[#5584a0]" />
+            </div>
+            <div>
+              <h1 className="text-3xl font-bold text-[#4f7a97]">Group Members</h1>
+              <p className="text-[#5c6c74] text-sm mt-1">View all members in this group</p>
+            </div>
+            <span className="ml-auto bg-[#5584a0]/10 text-[#5584a0] px-4 py-2 rounded-full text-sm font-semibold">
+              {members.length} {members.length === 1 ? 'Member' : 'Members'}
             </span>
           </div>
 
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="border-b border-border">
-                  <th className="text-left py-3 px-4 font-semibold text-muted-foreground">Role</th>
-                  <th className="text-left py-3 px-4 font-semibold text-muted-foreground">Telegram Username</th>
-                  <th className="text-left py-3 px-4 font-semibold text-muted-foreground">Wallet Address</th>
-                  <th className="text-left py-3 px-4 font-semibold text-muted-foreground">Active Voter</th>
-                  <th className="text-left py-3 px-4 font-semibold text-muted-foreground">Latest Participation</th>
+                <tr className="border-b-2 border-[#648196]/20">
+                  <th className="text-left py-4 px-4 font-semibold text-[#4f7a97]">Role</th>
+                  <th className="text-left py-4 px-4 font-semibold text-[#4f7a97]">Telegram Username</th>
+                  <th className="text-left py-4 px-4 font-semibold text-[#4f7a97]">Wallet Address</th>
+                  <th className="text-left py-4 px-4 font-semibold text-[#4f7a97]">Status</th>
+                  <th className="text-left py-4 px-4 font-semibold text-[#4f7a97]">Latest Participation</th>
                 </tr>
               </thead>
               <tbody>
                 {members.map((member, index) => (
-                  <tr 
+                  <motion.tr
                     key={member.walletAddress}
-                    className={`border-b border-border/50 hover:bg-muted/30 transition-colors ${
-                      member.walletAddress.toLowerCase() === address?.toLowerCase() ? 'bg-primary/5' : ''
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.05 }}
+                    className={`border-b border-[#648196]/10 hover:bg-[#5584a0]/5 transition-colors ${
+                      member.walletAddress.toLowerCase() === address?.toLowerCase() ? 'bg-[#eeb446]/5' : ''
                     }`}
                   >
-                    <td className="py-3 px-4">
+                    <td className="py-4 px-4">
                       <div className="flex items-center gap-2">
                         {member.role === 'coordinator' ? (
                           <>
-                            <Shield size={16} className="text-yellow-500" />
-                            <span className="text-sm font-medium text-yellow-600 dark:text-yellow-400">Coordinator</span>
+                            <div className="p-1.5 bg-[#eeb446]/10 rounded-lg">
+                              <Shield size={18} className="text-[#eeb446]" />
+                            </div>
+                            <span className="text-sm font-semibold text-[#eeb446]">Coordinator</span>
                           </>
                         ) : (
                           <>
-                            <User size={16} className="text-blue-500" />
-                            <span className="text-sm font-medium text-blue-600 dark:text-blue-400">Member</span>
+                            <div className="p-1.5 bg-[#5584a0]/10 rounded-lg">
+                              <User size={18} className="text-[#5584a0]" />
+                            </div>
+                            <span className="text-sm font-medium text-[#5c6c74]">Member</span>
                           </>
                         )}
                       </div>
                     </td>
-                    <td className="py-3 px-4">
-                      <span className="font-medium">
+                    <td className="py-4 px-4">
+                      <span className="font-medium text-[#4f7a97]">
                         {member.telegramUsername || 'Not set'}
                       </span>
                     </td>
-                    <td className="py-3 px-4">
+                    <td className="py-4 px-4">
                       <div className="flex items-center gap-2">
-                        <Wallet size={14} className="text-muted-foreground" />
-                        <code className="text-sm bg-muted px-2 py-1 rounded">
-                          {member.walletAddress}
-                          {/* {member.walletAddress.slice(0, 6)}...{member.walletAddress.slice(-4)} */}
+                        <Wallet size={14} className="text-[#5c6c74]" />
+                        <code className="text-xs bg-[#5584a0]/5 text-[#5c6c74] px-3 py-1.5 rounded-lg font-mono">
+                          {member.walletAddress.slice(0, 6)}...{member.walletAddress.slice(-4)}
                         </code>
                         {member.walletAddress.toLowerCase() === address?.toLowerCase() && (
-                          <span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded-full">(Current)</span>
+                          <span className="text-xs bg-[#eeb446]/10 text-[#eeb446] px-2 py-1 rounded-full font-medium">You</span>
                         )}
                       </div>
                     </td>
-                    <td className="py-3 px-4">
-                      <span className={`inline-flex items-center gap-1 text-sm ${
-                        member.isActiveVoter ? 'text-green-600 dark:text-green-400' : 'text-muted-foreground'
-                      }`}>
-                        {member.isActiveVoter ? '✓ Active' : 'Inactive'}
-                      </span>
+                    <td className="py-4 px-4">
+                      {member.isActiveVoter ? (
+                        <div className="flex items-center gap-1.5">
+                          <CheckCircle size={16} className="text-green-500" />
+                          <span className="text-sm font-medium text-green-600">Active</span>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-1.5">
+                          <XCircle size={16} className="text-[#5c6c74]" />
+                          <span className="text-sm font-medium text-[#5c6c74]">Inactive</span>
+                        </div>
+                      )}
                     </td>
-                    <td className="py-3 px-4">
-                      <span className="text-sm text-muted-foreground">
+                    <td className="py-4 px-4">
+                      <span className="text-sm text-[#5c6c74]">
                         {member.latestPeriodParticipation.toString() === '0' 
-                          ? 'Never' 
+                          ? 'Never participated' 
                           : `Period ${member.latestPeriodParticipation.toString()}`
                         }
                       </span>
                     </td>
-                  </tr>
+                  </motion.tr>
                 ))}
               </tbody>
             </table>
             
             {members.length === 0 && (
-              <div className="text-center py-8 text-muted-foreground">
-                <Users size={48} className="mx-auto mb-4 opacity-50" />
-                <p>No members found in this group.</p>
+              <div className="text-center py-16">
+                <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-[#5584a0]/10 mb-4">
+                  <Users size={40} className="text-[#5584a0]" />
+                </div>
+                <h3 className="text-xl font-bold text-[#4f7a97] mb-2">No Members Found</h3>
+                <p className="text-[#5c6c74]">This group doesn't have any members yet.</p>
               </div>
             )}
           </div>
