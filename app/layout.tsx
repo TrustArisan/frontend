@@ -17,19 +17,21 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning className="light" style={{ colorScheme: 'light' }}>
+    <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>
-        <Providers>
           <ThemeProvider
             attribute="class"
             defaultTheme="light"
-            enableSystem={true}
+            enableSystem={false}
+            enableColorScheme={true}
+            themes={["light", "dark"]}
             storageKey="trust-arisan-theme"
             disableTransitionOnChange={false}
-          >
-            {children}
+            >
+            <Providers>
+              {children}
+            </Providers>
           </ThemeProvider>
-        </Providers>
       </body>
     </html>
   );
