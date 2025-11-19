@@ -107,6 +107,40 @@ export default function GroupDetailPage() {
     }
   }
 
+  async function handleJoinGroup() {
+    if (!groupAddress || !isAddress(groupAddress)) {
+      console.error('Invalid group address');
+      return;
+    }
+
+    // Get telegram username from user (for now, we'll use a placeholder)
+    const telegramUsername = prompt('Please enter your Telegram username:') || '';
+    
+    if (!telegramUsername.trim()) {
+      alert('Telegram username is required to join the group');
+      return;
+    }
+
+    try {
+      const functionName = group.settings.openJoinEnabled ? 'joinGroupNoApproval' : 'joinGroup';
+      
+      const txHash = await writeContractAsync({
+        address: groupAddress as Address,
+        abi: GROUP_ABI,
+        functionName: functionName,
+        args: [telegramUsername],
+      });
+      
+      console.log(`${functionName} transaction sent:`, txHash);
+      
+      // Optionally refetch data after successful join
+      await reloadData();
+    } catch (error: any) {
+      console.error('Error joining group:', error);
+      alert(`Failed to join group: ${error.message || 'Unknown error'}`);
+    }
+  }
+  
   async function toggleOpenJoin() {
     if (!groupAddress || !isAddress(groupAddress)) {
       console.error('Invalid group address');
@@ -301,7 +335,7 @@ export default function GroupDetailPage() {
                         )}
                         {/* Can only join group when wallet is connected AND not a member */}
                         <motion.button
-                            onClick={() => (console.log("Click"))}
+                            onClick={handleJoinGroup}
                             className={((isConnected && !isMember) ? "" : "text-[hsl(var(--foreground))]/25 bg-gray-600/20 ") + "flex flex-initial justify-center px-5 py-3 rounded-full bg-primary text-primary-foreground font-medium text-md hover:bg-primary/90 transition-colors border border-[hsl(var(--foreground))]/10 shadow-sm hover:shadow-md "}
                             whileHover={(isConnected && !isMember) ? { scale: 1.05 } : {}}
                             whileTap={{ scale: 0.95 }}
