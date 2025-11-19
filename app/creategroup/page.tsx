@@ -29,6 +29,9 @@ export default function CreateGroupPage() {
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
   const [transactionHash, setTransactionHash] = useState('');
   const [isWei, setIsWei] = useState(true);
+  const [showSuccessPopup, setShowSuccessPopup] = useState(false);
+  const [showErrorPopup, setShowErrorPopup] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
 
   // Toggle between Wei and ETH
   const toggleWeiEth = () => {
@@ -149,6 +152,7 @@ export default function CreateGroupPage() {
     try {
       const result = await createGroup(submissionData);
       setTransactionHash(result.txHash);
+      setShowSuccessPopup(true);
 
       console.log('✅ Group created:', result.txHash);
 
@@ -160,8 +164,10 @@ export default function CreateGroupPage() {
         contributionAmountInWei: '',
         prizePercentage: 0,
       });
-    } catch (err) {
+    } catch (err: any) {
       console.error('Form submission error:', err);
+      setErrorMessage(err?.message || 'Failed to create group. Please try again.');
+      setShowErrorPopup(true);
     }
   };
 
@@ -173,7 +179,7 @@ export default function CreateGroupPage() {
           <p className="text-muted-foreground mb-4">Please connect your wallet to create a group</p>
           <Link href="/">
             <motion.button
-              className="px-8 py-3 rounded-full bg-primary text-primary-foreground font-medium text-md hover:bg-primary/90 transition-colors border border-[hsl(var(--foreground))]/10 hover:shadow-md"
+              className="px-8 py-3 rounded-full bg-[#5584a0] text-white font-medium text-md hover:bg-[#4f7a97] transition-colors border border-[#4f7a97]/20 hover:shadow-md"
               whileHover={{ x: -4 }}
               whileTap={{ scale: 0.95 }}
             >
@@ -190,39 +196,81 @@ export default function CreateGroupPage() {
 
   return (
     <div className="min-h-screen bg-background text-foreground p-6">
+      {/* Success Popup */}
+      {showSuccessPopup && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+          onClick={() => setShowSuccessPopup(false)}
+        >
+          <motion.div
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ type: "spring", duration: 0.5 }}
+            className="bg-white dark:bg-[#2a3a45] rounded-2xl shadow-2xl max-w-md w-full p-8 border-2 border-[#eeb446]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="text-center">
+              <div className="mx-auto w-16 h-16 bg-[#eeb446] rounded-full flex items-center justify-center mb-4">
+                <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+              <h2 className="text-2xl font-bold text-[#4f7a97] mb-2">Group Created Successfully!</h2>
+              <p className="text-[#5c6c74] mb-4">Your Arisan group has been created on the blockchain</p>
+              
+              {transactionHash && (
+                <div className="bg-[#eeb446]/10 border border-[#eeb446]/30 rounded-lg p-3 mb-6">
+                  <p className="text-xs text-[#5c6c74] mb-1 font-medium">Transaction Hash:</p>
+                  <p className="text-xs text-[#4f7a97] font-mono break-all">{transactionHash}</p>
+                </div>
+              )}
+              
+              <button
+                onClick={() => setShowSuccessPopup(false)}
+                className="w-full py-3 px-6 bg-[#5584a0] hover:bg-[#4f7a97] text-white font-semibold rounded-lg transition-colors shadow-md"
+              >
+                Continue
+              </button>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+
       <div className="max-w-2xl mx-auto">
-        <div className="bg-card border border-[hsl(var(--foreground))]/20 rounded-xl p-8 shadow">
+        <div className="bg-card border border-[#648196]/30 rounded-xl p-8 shadow-lg">
           <motion.button
             onClick={() => router.back()}
-            className="flex pe-8 py-3 rounded-full bg-primary text-primary-foreground font-medium text-md hover:bg-primary/90 transition-colors"
+            className="flex items-center justify-center w-10 h-10 rounded-full bg-[#5584a0] text-white font-bold text-lg hover:bg-[#4f7a97] transition-colors shadow-sm mb-6"
             whileHover={{ x: -4 }}
             whileTap={{ scale: 0.95 }}
           >
-            <ChevronLeft className='me-3' /> Go Back
+            <ChevronLeft size={24} />
           </motion.button>
-          <h1 className="text-3xl font-bold mb-2">Create Arisan Group</h1>
-          <p className="text-muted-foreground mb-8">Set up a new Arisan group with your custom parameters</p>
+          <h1 className="text-3xl font-bold mb-2 text-[#4f7a97]">Create Arisan Group</h1>
+          <p className="text-[#5c6c74] mb-8">Set up a new Arisan group with your custom parameters</p>
 
           {/* Transaction Hash Display */}
-          {transactionHash && (
-            <div className="mb-6 p-4 bg-success/10 border border-success/50 rounded-lg">
-              <p className="text-success-foreground text-sm">
-                <strong>✓ Group created!</strong> Tx: {transactionHash}
+          {transactionHash && !showSuccessPopup && (
+            <div className="mb-6 p-4 bg-[#eeb446]/10 border border-[#eeb446] rounded-lg">
+              <p className="text-[#5c6c74] text-sm">
+                <strong className="text-[#eeb446]">✓ Group created!</strong> Tx: {transactionHash}
               </p>
             </div>
           )}
 
           {/* Error Display */}
-          {error && (
-            <div className="mb-6 p-4 bg-destructive/10 border border-destructive/50 rounded-lg">
-              <p className="text-destructive-foreground text-sm">{error.message}</p>
+          {error && !showErrorPopup && (
+            <div className="mb-6 p-4 bg-red-50 border border-red-300 rounded-lg">
+              <p className="text-red-700 text-sm">{error.message}</p>
             </div>
           )}
 
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Group Title */}
             <div>
-              <label htmlFor="title" className="block text-sm font-medium text-foreground mb-2">
+              <label htmlFor="title" className="block text-sm font-medium text-[#4f7a97] mb-2">
                 Group Title <span className='text-red-500'>*</span>
               </label>
               <input
@@ -231,19 +279,19 @@ export default function CreateGroupPage() {
                 type="text"
                 value={formData.title}
                 onChange={handleInputChange}
-                placeholder="e.g., Crypto Enthusiasts Jakarta"
-                className={`w-full px-4 py-2 bg-background border border-[hsl(var(--foreground))]/20 rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring transition ${
-                  validationErrors.title ? 'border-destructive' : 'border-input'
+                placeholder="Insert your group title"
+                className={`w-full px-4 py-2.5 bg-background border rounded-lg text-foreground placeholder-[#5c6c74]/60 focus:outline-none focus:ring-2 focus:ring-[#5584a0] transition ${
+                  validationErrors.title ? 'border-red-400' : 'border-[#648196]/30'
                 }`}
               />
               {validationErrors.title && (
-                <p className="text-destructive text-sm mt-1">{validationErrors.title}</p>
+                <p className="text-red-500 text-sm mt-1">{validationErrors.title}</p>
               )}
             </div>
 
             {/* Telegram Group URL */}
             <div>
-              <label htmlFor="telegramGroupUrl" className="block text-sm font-medium text-foreground mb-2">
+              <label htmlFor="telegramGroupUrl" className="block text-sm font-medium text-[#4f7a97] mb-2">
                 Telegram Group URL <span className='text-red-500'>*</span>
               </label>
               <input
@@ -252,19 +300,22 @@ export default function CreateGroupPage() {
                 type="text"
                 value={formData.telegramGroupUrl}
                 onChange={handleInputChange}
-                placeholder="https://t.me/yourgroupname"
-                className={`w-full px-4 py-2 bg-background border border-[hsl(var(--foreground))]/20 rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring transition ${
-                  validationErrors.telegramGroupUrl ? 'border-destructive' : 'border-input'
+                placeholder="Insert your Telegram group link"
+                className={`w-full px-4 py-2.5 bg-background border rounded-lg text-foreground placeholder-[#5c6c74]/60 focus:outline-none focus:ring-2 focus:ring-[#5584a0] transition ${
+                  validationErrors.telegramGroupUrl ? 'border-red-400' : 'border-[#648196]/30'
                 }`}
               />
+              <p className="text-[#5c6c74]/70 text-xs mt-1">
+                Example format: https://t.me/yourgroupname
+              </p>
               {validationErrors.telegramGroupUrl && (
-                <p className="text-destructive text-sm mt-1">{validationErrors.telegramGroupUrl}</p>
+                <p className="text-red-500 text-sm mt-1">{validationErrors.telegramGroupUrl}</p>
               )}
             </div>
 
             {/* Coordinator Telegram Username */}
             <div>
-              <label htmlFor="coordinatorTelegramUsername" className="block text-sm font-medium text-foreground mb-2">
+              <label htmlFor="coordinatorTelegramUsername" className="block text-sm font-medium text-[#4f7a97] mb-2">
                 Your Telegram Username <span className='text-red-500'>*</span>
               </label>
               <input
@@ -273,13 +324,16 @@ export default function CreateGroupPage() {
                 type="text"
                 value={formData.coordinatorTelegramUsername}
                 onChange={handleInputChange}
-                placeholder="@yourname"
-                className={`w-full px-4 py-2 bg-background border border-[hsl(var(--foreground))]/20 rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring transition ${
-                  validationErrors.coordinatorTelegramUsername ? 'border-destructive' : 'border-input'
+                placeholder="Insert your Telegram username"
+                className={`w-full px-4 py-2.5 bg-background border rounded-lg text-foreground placeholder-[#5c6c74]/60 focus:outline-none focus:ring-2 focus:ring-[#5584a0] transition ${
+                  validationErrors.coordinatorTelegramUsername ? 'border-red-400' : 'border-[#648196]/30'
                 }`}
               />
+              <p className="text-[#5c6c74]/70 text-xs mt-1">
+                Example format: @yourname
+              </p>
               {validationErrors.coordinatorTelegramUsername && (
-                <p className="text-destructive text-sm mt-1">{validationErrors.coordinatorTelegramUsername}</p>
+                <p className="text-red-500 text-sm mt-1">{validationErrors.coordinatorTelegramUsername}</p>
               )}
             </div>
 
@@ -287,7 +341,7 @@ export default function CreateGroupPage() {
             <div className="grid grid-cols-2 gap-x-4">
               {/* Coordinator Commission Percentage */}
               <div>
-                <label htmlFor="coordinatorCommissionPercentage" className="block text-sm font-medium text-foreground mb-2">
+                <label htmlFor="coordinatorCommissionPercentage" className="block text-sm font-medium text-[#4f7a97] mb-2">
                   Commission % (5-50) <span className='text-red-500'>*</span>
                 </label>
                 <div className="flex items-center">
@@ -299,20 +353,20 @@ export default function CreateGroupPage() {
                     max="50"
                     value={formData.coordinatorCommissionPercentage}
                     onChange={handleInputChange}
-                    className={`w-full px-4 py-2 bg-background border border-[hsl(var(--foreground))]/20 rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring transition ${
-                      validationErrors.coordinatorCommissionPercentage ? 'border-destructive' : 'border-input'
+                    className={`w-full px-4 py-2.5 bg-background border rounded-lg text-foreground placeholder-[#5c6c74]/60 focus:outline-none focus:ring-2 focus:ring-[#5584a0] transition ${
+                      validationErrors.coordinatorCommissionPercentage ? 'border-red-400' : 'border-[#648196]/30'
                     }`}
                   />
-                  <span className="ml-2 text-muted-foreground">%</span>
+                  <span className="ml-2 text-[#5c6c74]">%</span>
                 </div>
                 {validationErrors.coordinatorCommissionPercentage && (
-                  <p className="text-destructive text-sm mt-1">{validationErrors.coordinatorCommissionPercentage}</p>
+                  <p className="text-red-500 text-sm mt-1">{validationErrors.coordinatorCommissionPercentage}</p>
                 )}
               </div>
 
               {/* Prize Percentage */}
               <div>
-                <label htmlFor="prizePercentage" className="block text-sm font-medium text-foreground mb-2">
+                <label htmlFor="prizePercentage" className="block text-sm font-medium text-[#4f7a97] mb-2">
                   Prize % <span className='text-red-500'>*</span>
                 </label>
                 <div className="flex items-center">
@@ -324,25 +378,25 @@ export default function CreateGroupPage() {
                     max="100"
                     value={formData.prizePercentage}
                     onChange={handleInputChange}
-                    className={`w-full px-4 py-2 bg-background border border-[hsl(var(--foreground))]/20 rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring transition ${
-                      validationErrors.prizePercentage ? 'border-destructive' : 'border-input'
+                    className={`w-full px-4 py-2.5 bg-background border rounded-lg text-foreground placeholder-[#5c6c74]/60 focus:outline-none focus:ring-2 focus:ring-[#5584a0] transition ${
+                      validationErrors.prizePercentage ? 'border-red-400' : 'border-[#648196]/30'
                     }`}
                   />
-                  <span className="ml-2 text-muted-foreground">%</span>
+                  <span className="ml-2 text-[#5c6c74]">%</span>
                 </div>
                 {validationErrors.prizePercentage && (
-                  <p className="text-destructive text-sm mt-1">{validationErrors.prizePercentage}</p>
+                  <p className="text-red-500 text-sm mt-1">{validationErrors.prizePercentage}</p>
                 )}
               </div>
 
               {/* Warning Label */}
-              <p className='text-slate-400 text-xs mt-1'>Commission + Prize must equal to 100% or less</p>
+              <p className='text-[#5c6c74]/80 text-xs mt-1 col-span-2'>Commission + Prize must equal to 100% or less</p>
             </div>
 
             {/* Contribution Amount */}
             <div>
               <div className="flex justify-between items-center mb-2">
-                <label htmlFor="contributionAmountInWei" className="block text-sm font-medium text-foreground">
+                <label htmlFor="contributionAmountInWei" className="block text-sm font-medium text-[#4f7a97]">
                   Contribution Amount ({isWei ? 'Wei' : 'ETH'}) <span className='text-red-500'>*</span>
                 </label>
               </div>
@@ -354,28 +408,28 @@ export default function CreateGroupPage() {
                   step={isWei ? '1' : '0.000000000000000001'}
                   value={formData.contributionAmountInWei}
                   onChange={handleInputChange}
-                  placeholder={isWei 
-                    ? `e.g., 1000000000000000000 ${isWei ? 'Wei' : 'ETH'}` 
-                    : `e.g., 1.0 ${isWei ? 'Wei' : 'ETH'}`}
-                  className={`w-full px-4 py-2 bg-background border border-[hsl(var(--foreground))]/20 rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring transition ${
-                    validationErrors.contributionAmountInWei ? 'border-destructive' : 'border-input'
+                  placeholder={isWei ? 'Enter amount in Wei' : 'Enter amount in ETH'}
+                  className={`w-full px-4 py-2.5 bg-background border rounded-lg text-foreground placeholder-[#5c6c74]/60 focus:outline-none focus:ring-2 focus:ring-[#5584a0] transition ${
+                    validationErrors.contributionAmountInWei ? 'border-red-400' : 'border-[#648196]/30'
                   }`}
                 />
                 <motion.button
                   type='button'
                   onClick={toggleWeiEth}
-                  className="flex ms-3 px-3 py-2 rounded-md bg-primary text-primary-foreground font-medium text-xs hover:bg-primary/90 transition-colors border border-[hsl(var(--foreground))]/10 hover:shadow-md"
+                  className="flex items-center ml-3 px-3 py-2.5 rounded-md bg-[#eeb446] text-white font-medium text-xs hover:bg-[#d9a33f] transition-colors shadow-sm"
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
+                  title="Click to switch currency"
                 >
-                  <Shuffle className='px-0.5'/>
+                  <Shuffle size={16}/>
                 </motion.button>
               </div>
-              <p className="text-muted-foreground text-xs mt-1">
-                1 ETH = 1,000,000,000,000,000,000 Wei
-              </p>
+              <div className="text-[#5c6c74]/70 text-xs mt-1 space-y-0.5">
+                <p>Click the <Shuffle size={12} className="inline mb-0.5"/> button to switch between Wei and ETH</p>
+                <p>1 ETH = 1,000,000,000,000,000,000 Wei</p>
+              </div>
               {validationErrors.contributionAmountInWei && (
-                <p className="text-destructive text-sm mt-1">{validationErrors.contributionAmountInWei}</p>
+                <p className="text-red-500 text-sm mt-1">{validationErrors.contributionAmountInWei}</p>
               )}
             </div>
 
@@ -384,10 +438,10 @@ export default function CreateGroupPage() {
               <button
                 type="submit"
                 disabled={isPending}
-                className={`w-full py-3 px-4 rounded-lg font-semibold text-white transition ${
+                className={`w-full py-3 px-4 rounded-lg font-semibold text-white transition shadow-md ${
                   isPending
-                    ? 'bg-slate-600 cursor-not-allowed opacity-50'
-                    : 'bg-linear-to-r from-blue-600 to-blue-800 hover:from-blue-800 hover:to-blue-900 active:scale-95'
+                    ? 'bg-[#5c6c74] cursor-not-allowed opacity-50'
+                    : 'bg-[#5584a0] hover:bg-[#4f7a97] active:scale-95'
                 }`}
               >
                 {isPending ? (
@@ -404,11 +458,11 @@ export default function CreateGroupPage() {
               </button>
             </div>
 
-            <p className="text-slate-500 text-xs text-center">
+            <p className="text-[#5c6c74]/80 text-xs text-center">
               All fields marked with <span className='text-red-500'>*</span> are required
             </p>
-            <p className="text-slate-500 text-xs text-center -mt-4">
-              By submitting, you agree for the Platform to take <span className='underline text-green-700'>5%</span> of the coordinator's commission
+            <p className="text-[#5c6c74]/80 text-xs text-center -mt-4">
+              By submitting, you agree for the Platform to take <span className='underline text-[#eeb446] font-semibold'>5%</span> of the coordinator's commission
             </p>
           </form>
         </div>

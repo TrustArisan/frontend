@@ -132,7 +132,7 @@ export default function Dashboard() {
                         whileTap={{ scale: 0.98 }}
                       >
                         <Search size={16} />
-                        <span>Check Room</span>
+                        <span>Details</span>
                       </motion.button>
                     </Link>
                     
