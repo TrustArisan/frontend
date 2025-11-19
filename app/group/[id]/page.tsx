@@ -8,7 +8,7 @@ import { GROUP_ABI } from '@/app/utils/TrustArisanGroupABI';
 import Header from '@/app/components/Header';
 import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
-import { ChevronLeft, Users, Percent, Coins, UsersRound, MessageCircleMore, HandCoins, Bitcoin, RotateCcw, Boxes, BadgeCheck, Badge } from 'lucide-react';
+import { ChevronLeft, Users, Percent, Coins, UsersRound, MessageCircleMore, HandCoins, Bitcoin, RotateCcw, Boxes, BadgeCheck, Badge, List } from 'lucide-react';
 import { Avatar } from '@/app/components/Avatar';
 import Link from 'next/link';
 import ThemeToggle from '@/app/components/ThemeToggle';
@@ -309,6 +309,17 @@ export default function GroupDetailPage() {
                             >
                             <UsersRound className='me-2 font-thin px-0.5'/> Join Group
                         </motion.button>
+                        {/* View Members */}
+                        {isMember && (
+                          <motion.button
+                              onClick={() => router.push(`/group/${id}/members`)}
+                              className="flex grow justify-center px-5 py-3 rounded-full bg-primary text-primary-foreground font-medium text-md hover:bg-primary/90 transition-colors border border-[hsl(var(--foreground))]/10 shadow-sm hover:shadow-md"
+                              whileHover={{ scale: 1.05 }}
+                              whileTap={{ scale: 0.95 }}
+                              >
+                              <List className='me-2 font-thin px-0.5'/> View Members
+                          </motion.button>
+                        )}
                         {/* Redirect to chatroom */}
                         <Link className='flex flex-initial' target='_blank' href={group.settings.telegramGroupUrl} rel='noopener noreferrer'>
                             <motion.button
