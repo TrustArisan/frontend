@@ -194,10 +194,11 @@ export default function MembersPage() {
                       <div className="flex items-center gap-2">
                         <Wallet size={14} className="text-muted-foreground" />
                         <code className="text-sm bg-muted px-2 py-1 rounded">
-                          {member.walletAddress.slice(0, 6)}...{member.walletAddress.slice(-4)}
+                          {member.walletAddress}
+                          {/* {member.walletAddress.slice(0, 6)}...{member.walletAddress.slice(-4)} */}
                         </code>
                         {member.walletAddress.toLowerCase() === address?.toLowerCase() && (
-                          <span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded-full">You</span>
+                          <span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded-full">(Current)</span>
                         )}
                       </div>
                     </td>
