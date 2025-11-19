@@ -8,7 +8,7 @@ import {
   useBalance,
   useWriteContract,
 } from "wagmi";
-import { Address, isAddress, formatEther } from "viem";
+import { Address, isAddress, formatEther, parseEther } from "viem";
 import { GROUP_ABI } from "@/app/utils/TrustArisanGroupABI";
 import Header from "@/app/components/Header";
 import { motion } from "framer-motion";
@@ -27,6 +27,8 @@ import {
   BadgeCheck,
   Badge,
   List,
+  TrendingUp,
+  AlertCircle,
 } from "lucide-react";
 import { Avatar } from "@/app/components/Avatar";
 import Link from "next/link";
@@ -40,6 +42,9 @@ export default function GroupDetailPage() {
   const { address, isConnected } = useAccount();
   const [isMember, setIsMember] = useState<boolean>(false);
   const [isCoordinator, setIsCoordinator] = useState<boolean>(false);
+  const [capacityUpgradeCost, setCapacityUpgradeCost] = useState<bigint>(BigInt(0));
+  const [nextCapacityTier, setNextCapacityTier] = useState<number>(0);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const {
     writeContractAsync,
     isPending,
@@ -78,7 +83,7 @@ export default function GroupDetailPage() {
       setIsLoading(true);
 
       // Fetch group details
-      const [detail, settings] = await Promise.all([
+      const [detail, settings, upgradeCost, nextTier] = await Promise.all([
         publicClient.readContract({
           address: id as Address,
           abi: GROUP_ABI,
@@ -89,7 +94,20 @@ export default function GroupDetailPage() {
           abi: GROUP_ABI,
           functionName: "getGroupSettings",
         }),
+        publicClient.readContract({
+          address: id as Address,
+          abi: GROUP_ABI,
+          functionName: "capacityUpgradeCost",
+        }),
+        publicClient.readContract({
+          address: id as Address,
+          abi: GROUP_ABI,
+          functionName: "getNextCapacityTier",
+        }),
       ]);
+
+      setCapacityUpgradeCost(upgradeCost as bigint);
+      setNextCapacityTier(Number(nextTier));
 
       setGroup({
         id,
@@ -195,8 +213,36 @@ export default function GroupDetailPage() {
       });
 
       console.log("Toggle transaction sent:", txHash);
+      await reloadData();
     } catch (error: any) {
       console.error("Error toggling open join:", error);
+    }
+  }
+
+  async function handleUpgradeCapacity() {
+    if (!groupAddress || !isAddress(groupAddress)) {
+      console.error("Invalid group address");
+      return;
+    }
+
+    try {
+      const txHash = await writeContractAsync({
+        address: groupAddress as Address,
+        abi: GROUP_ABI,
+        functionName: "upgradeCapacity",
+        value: capacityUpgradeCost,
+      });
+
+      console.log("Upgrade capacity transaction sent:", txHash);
+      setShowUpgradeModal(false);
+      
+      // Wait a bit for blockchain confirmation then reload
+      setTimeout(async () => {
+        await reloadData();
+      }, 2000);
+    } catch (error: any) {
+      console.error("Error upgrading capacity:", error);
+      alert(`Failed to upgrade capacity: ${error.message || "Unknown error"}`);
     }
   }
 
@@ -233,9 +279,95 @@ export default function GroupDetailPage() {
     );
   }
 
+  // Check if capacity is near full or full
+  const membersCount = Number(group.membersCount || 0);
+  const maxCapacity = Number(group.settings.maxCapacity || 0);
+  const capacityPercentage = (membersCount / maxCapacity) * 100;
+  const isCapacityNearFull = capacityPercentage >= 80;
+  const isCapacityFull = membersCount >= maxCapacity;
+
   return (
     <div className="min-h-screen bg-background">
       <Header />
+
+      {/* Upgrade Capacity Modal */}
+      {showUpgradeModal && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+          onClick={() => setShowUpgradeModal(false)}
+        >
+          <motion.div
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ type: "spring", duration: 0.5 }}
+            className="bg-white dark:bg-[#2a3a45] rounded-2xl shadow-2xl max-w-md w-full p-8 border-2 border-[#eeb446]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="text-center">
+              <div className="mx-auto w-16 h-16 bg-[#eeb446] rounded-full flex items-center justify-center mb-4">
+                <TrendingUp className="w-8 h-8 text-white" />
+              </div>
+              <h2 className="text-2xl font-bold text-[#4f7a97] mb-2">Upgrade Group Capacity</h2>
+              <p className="text-[#5c6c74] mb-6">
+                Increase your group's maximum capacity to accommodate more members
+              </p>
+              
+              <div className="bg-[#eeb446]/10 border border-[#eeb446]/30 rounded-lg p-4 mb-6 space-y-2">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-[#5c6c74] font-medium">Current Capacity:</span>
+                  <span className="text-lg font-bold text-[#4f7a97]">{maxCapacity} members</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-[#5c6c74] font-medium">Next Tier:</span>
+                  <span className="text-lg font-bold text-[#eeb446]">{nextCapacityTier} members</span>
+                </div>
+                <div className="flex justify-between items-center pt-2 border-t border-[#eeb446]/20">
+                  <span className="text-sm text-[#5c6c74] font-medium">Upgrade Cost:</span>
+                  <span className="text-xl font-bold text-[#4f7a97]">
+                    {formatEther(capacityUpgradeCost)} ETH
+                  </span>
+                </div>
+              </div>
+
+              <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg p-3 mb-6 flex items-start gap-2">
+                <AlertCircle className="w-4 h-4 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
+                <p className="text-xs text-blue-900 dark:text-blue-300 text-left">
+                  The upgrade cost will be sent to the platform wallet. This is a one-time payment for each capacity tier.
+                </p>
+              </div>
+              
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowUpgradeModal(false)}
+                  className="flex-1 py-3 px-6 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 font-semibold rounded-lg transition-colors"
+                  disabled={isPending}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleUpgradeCapacity}
+                  disabled={isPending}
+                  className="flex-1 py-3 px-6 bg-[#5584a0] hover:bg-[#4f7a97] text-white font-semibold rounded-lg transition-colors shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isPending ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                        <circle cx="12" cy="12" r="10" strokeWidth="2" opacity="0.25" />
+                        <path d="M4 12a8 8 0 018-8" strokeWidth="2" strokeLinecap="round" />
+                      </svg>
+                      Processing...
+                    </span>
+                  ) : (
+                    'Confirm Upgrade'
+                  )}
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
 
       <main className="container mx-auto px-4 py-8">
         <motion.button
@@ -277,16 +409,44 @@ export default function GroupDetailPage() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="bg-muted/50 p-4 rounded-lg">
-              <div className="flex items-center gap-2 text-muted-foreground mb-1">
-                <Users size={18} />
-                <span className="text-sm font-medium">Members</span>
+              <div className="flex items-center justify-between mb-1">
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <Users size={18} />
+                  <span className="text-sm font-medium">Members</span>
+                </div>
+                {isCapacityNearFull && (
+                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                    isCapacityFull 
+                      ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                      : 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
+                  }`}>
+                    {isCapacityFull ? 'Full' : 'Near Full'}
+                  </span>
+                )}
               </div>
               <p className="text-2xl font-semibold">
-                {group.membersCount?.toString() || "0"}
+                {membersCount}
                 <span className="text-muted-foreground text-sm ml-1">
-                  / {group.settings.maxCapacity?.toString() || "0"}
+                  / {maxCapacity}
                 </span>
               </p>
+              {isCapacityNearFull && (
+                <div className="mt-2">
+                  <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                    <div 
+                      className={`h-2 rounded-full transition-all ${
+                        isCapacityFull 
+                          ? 'bg-red-500' 
+                          : 'bg-yellow-500'
+                      }`}
+                      style={{ width: `${Math.min(capacityPercentage, 100)}%` }}
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {capacityPercentage.toFixed(0)}% capacity used
+                  </p>
+                </div>
+              )}
             </div>
 
             <div className="bg-muted/50 p-4 rounded-lg">
@@ -359,6 +519,7 @@ export default function GroupDetailPage() {
           {/* Decorative Element */}
           <div className="absolute top-0 right-0 w-20 h-20 bg-linear-to-br from-[#eeb446]/10 to-transparent rounded-bl-full opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
         </motion.div>
+        
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -372,89 +533,159 @@ export default function GroupDetailPage() {
                 {/* Coordinator Only Group Settings */}
                 {/* Open Join Toggle - Coordinator Only */}
                 {isCoordinator && (
-                  <div className="col-span-1 sm:col-span-2 md:col-span-3 lg:col-span-4">
-                    <div className="bg-muted/50 rounded-xl p-4 border border-[hsl(var(--foreground))]/10">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <div
-                            className={`p-2.5 rounded-lg transition-colors ${
+                  <>
+                    <div className="col-span-1 sm:col-span-2 md:col-span-3 lg:col-span-4">
+                      <div className="bg-muted/50 rounded-xl p-4 border border-[hsl(var(--foreground))]/10">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <div
+                              className={`p-2.5 rounded-lg transition-colors ${
+                                group.settings.openJoinEnabled
+                                  ? "bg-emerald-100"
+                                  : "bg-muted"
+                              }`}
+                            >
+                              {group.settings.openJoinEnabled ? (
+                                <BadgeCheck className="w-5 h-5 text-emerald-600" />
+                              ) : (
+                                <Badge className="w-5 h-5 text-muted-foreground" />
+                              )}
+                            </div>
+                            <div>
+                              <h3 className="font-semibold">Open Join</h3>
+                              <p className="text-xs text-muted-foreground mt-0.5">
+                                {group.settings.openJoinEnabled
+                                  ? "Members can join directly"
+                                  : "Requires approval to join"}
+                              </p>
+                            </div>
+                          </div>
+
+                          <motion.button
+                            onClick={toggleOpenJoin}
+                            disabled={isPending}
+                            className={`relative w-14 h-7 rounded-full transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 ${
                               group.settings.openJoinEnabled
-                                ? "bg-emerald-100"
-                                : "bg-muted"
+                                ? "bg-emerald-500 focus:ring-emerald-500"
+                                : 'bg-slate-400 focus:ring-slate-400'
+                            } ${
+                              isPending
+                                ? "opacity-50 cursor-not-allowed"
+                                : "cursor-pointer"
+                            }`}
+                            whileTap={{ scale: 0.95 }}
+                          >
+                            <motion.div
+                              className="absolute top-0.5 left-0.5 w-6 h-6 bg-white rounded-full shadow-md"
+                              animate={{
+                                x: group.settings.openJoinEnabled ? 28 : 0,
+                              }}
+                              transition={{
+                                type: "spring",
+                                stiffness: 500,
+                                damping: 30,
+                              }}
+                            />
+                          </motion.button>
+                        </div>
+
+                        <div className="mt-4 pt-4 border-t border-[hsl(var(--foreground))]/10">
+                          <div
+                            className={`text-xs font-medium px-3 py-2 rounded-lg ${
+                              group.settings.openJoinEnabled
+                                ? "bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950 dark:text-emerald-400 dark:border-emerald-800"
+                                : "bg-muted text-muted-foreground border border-[hsl(var(--foreground))]/10"
                             }`}
                           >
                             {group.settings.openJoinEnabled ? (
-                              <BadgeCheck className="w-5 h-5 text-emerald-600" />
+                              <div className="flex items-center gap-2">
+                                <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
+                                <span>
+                                  Group is open - Anyone can join immediately
+                                </span>
+                              </div>
                             ) : (
-                              <Badge className="w-5 h-5 text-muted-foreground" />
+                              <div className="flex items-center gap-2">
+                                <div className="w-1.5 h-1.5 bg-muted-foreground rounded-full" />
+                                <span>
+                                  Group is closed - Join requests need approval
+                                </span>
+                              </div>
                             )}
                           </div>
-                          <div>
-                            <h3 className="font-semibold">Open Join</h3>
-                            <p className="text-xs text-muted-foreground mt-0.5">
-                              {group.settings.openJoinEnabled
-                                ? "Members can join directly"
-                                : "Requires approval to join"}
-                            </p>
-                          </div>
-                        </div>
-
-                        <motion.button
-                          onClick={toggleOpenJoin}
-                          disabled={isPending}
-                          className={`relative w-14 h-7 rounded-full transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 ${
-                            group.settings.openJoinEnabled
-                              ? "bg-emerald-500 focus:ring-emerald-500"
-                              : 'bg-slate-400 focus:ring-slate-400'
-                          } ${
-                            isPending
-                              ? "opacity-50 cursor-not-allowed"
-                              : "cursor-pointer"
-                          }`}
-                          whileTap={{ scale: 0.95 }}
-                        >
-                          <motion.div
-                            className="absolute top-0.5 left-0.5 w-6 h-6 bg-white rounded-full shadow-md"
-                            animate={{
-                              x: group.settings.openJoinEnabled ? 28 : 0,
-                            }}
-                            transition={{
-                              type: "spring",
-                              stiffness: 500,
-                              damping: 30,
-                            }}
-                          />
-                        </motion.button>
-                      </div>
-
-                      <div className="mt-4 pt-4 border-t border-[hsl(var(--foreground))]/10">
-                        <div
-                          className={`text-xs font-medium px-3 py-2 rounded-lg ${
-                            group.settings.openJoinEnabled
-                              ? "bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950 dark:text-emerald-400 dark:border-emerald-800"
-                              : "bg-muted text-muted-foreground border border-[hsl(var(--foreground))]/10"
-                          }`}
-                        >
-                          {group.settings.openJoinEnabled ? (
-                            <div className="flex items-center gap-2">
-                              <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
-                              <span>
-                                Group is open - Anyone can join immediately
-                              </span>
-                            </div>
-                          ) : (
-                            <div className="flex items-center gap-2">
-                              <div className="w-1.5 h-1.5 bg-muted-foreground rounded-full" />
-                              <span>
-                                Group is closed - Join requests need approval
-                              </span>
-                            </div>
-                          )}
                         </div>
                       </div>
                     </div>
-                  </div>
+
+                    {/* Upgrade Capacity Section - Coordinator Only */}
+                    <div className="col-span-1 sm:col-span-2 md:col-span-3 lg:col-span-4">
+                      <div className={`bg-muted/50 rounded-xl p-4 border ${
+                        isCapacityNearFull 
+                          ? 'border-[#eeb446]/50 bg-[#eeb446]/5' 
+                          : 'border-[hsl(var(--foreground))]/10'
+                      }`}>
+                        <div className="flex items-start justify-between">
+                          <div className="flex items-start gap-3 flex-1">
+                            <div className={`p-2.5 rounded-lg ${
+                              isCapacityNearFull 
+                                ? 'bg-[#eeb446]/20' 
+                                : 'bg-muted'
+                            }`}>
+                              <TrendingUp className={`w-5 h-5 ${
+                                isCapacityNearFull 
+                                  ? 'text-[#eeb446]' 
+                                  : 'text-muted-foreground'
+                              }`} />
+                            </div>
+                            <div className="flex-1">
+                              <h3 className="font-semibold flex items-center gap-2">
+                                Upgrade Capacity
+                                {isCapacityNearFull && (
+                                  <span className="text-xs px-2 py-0.5 bg-[#eeb446]/20 text-[#eeb446] rounded-full font-medium">
+                                    Recommended
+                                  </span>
+                                )}
+                              </h3>
+                              <p className="text-xs text-muted-foreground mt-0.5">
+                                Current: {maxCapacity} members | Next tier: {nextCapacityTier} members
+                              </p>
+                              <p className="text-xs text-muted-foreground mt-1">
+                                Upgrade cost: <span className="font-semibold text-[#4f7a97]">
+                                  {formatEther(capacityUpgradeCost)} ETH
+                                </span>
+                              </p>
+                            </div>
+                          </div>
+
+                          <motion.button
+                            onClick={() => setShowUpgradeModal(true)}
+                            disabled={isPending}
+                            className="px-4 py-2 rounded-lg bg-[#5584a0] hover:bg-[#4f7a97] text-white font-medium text-sm transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                          >
+                            Upgrade
+                          </motion.button>
+                        </div>
+
+                        {isCapacityNearFull && (
+                          <div className="mt-4 pt-4 border-t border-[#eeb446]/20">
+                            <div className="flex items-start gap-2 text-xs text-[#5c6c74] bg-[#eeb446]/10 border border-[#eeb446]/20 rounded-lg p-3">
+                              <AlertCircle className="w-4 h-4 text-[#eeb446] flex-shrink-0 mt-0.5" />
+                              <p>
+                                {isCapacityFull 
+                                  ? 'Your group has reached maximum capacity. Upgrade now to accept new members.'
+                                  : 'Your group is near capacity. Consider upgrading to avoid reaching the limit.'
+                                }
+                              </p>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </>
                 )}
+                
                 {/* Can only join group when wallet is connected AND not a member */}
                 <motion.button
                   onClick={handleJoinGroup}

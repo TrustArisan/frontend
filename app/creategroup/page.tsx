@@ -5,7 +5,8 @@ import { useAccount } from 'wagmi';
 import { motion } from 'framer-motion';
 import { 
   ChevronLeft,
-  Shuffle
+  Shuffle,
+  Info
 } from 'lucide-react';
 import ThemeToggle from '@/app/components/ThemeToggle';
 import Link from 'next/link';
@@ -250,6 +251,15 @@ export default function CreateGroupPage() {
           </motion.button>
           <h1 className="text-3xl font-bold mb-2 text-[#4f7a97]">Create Arisan Group</h1>
           <p className="text-[#5c6c74] mb-8">Set up a new Arisan group with your custom parameters</p>
+
+          {/* Info Box about Capacity */}
+          <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg flex items-start gap-3">
+            <Info className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
+            <div className="text-sm text-blue-900 dark:text-blue-300">
+              <p className="font-semibold mb-1">Initial Capacity: 10 Members</p>
+              <p>Your group will start with a maximum capacity of 10 members. You can upgrade the capacity later from the group detail page if needed.</p>
+            </div>
+          </div>
 
           {/* Transaction Hash Display */}
           {transactionHash && !showSuccessPopup && (
