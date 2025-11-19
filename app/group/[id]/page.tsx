@@ -179,11 +179,11 @@ export default function GroupDetailPage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4 }}
-          className="bg-card rounded-xl border border-[hsl(var(--foreground))]/20 p-6 shadow-sm"
+          className="relative group bg-card rounded-xl border border-[#4f7a97]/10 hover:border-[#4f7a97]/30 hover:shadow-xl transition-all duration-300 p-6 shadow-sm"
         >
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
             <div className='flex w-full md:flex-row flex-col items-center place-items-center justify-items-center'>
-                <Avatar name={group.title} size='xxl' className='md:me-4 md:mb-0 mb-4'/>
+                <Avatar name={group.title} size="xxl" className="md:me-4 md:mb-0 mb-4 ring-4 ring-[#eeb446]/20" />
                 <div>
                     <h1 className="text-3xl font-bold mb-1 md:text-start text-center">{group.settings.title}</h1>
                     <p className="text-muted-foreground md:text-start text-center">
@@ -268,6 +268,9 @@ export default function GroupDetailPage() {
               </p>
             </div>
           </div>
+          
+          {/* Decorative Element */}
+          <div className="absolute top-0 right-0 w-20 h-20 bg-linear-to-br from-[#eeb446]/10 to-transparent rounded-bl-full opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
         </motion.div>
         <motion.div
             initial={{ opacity: 0, y: 20 }}
