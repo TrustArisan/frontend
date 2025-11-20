@@ -143,7 +143,12 @@ export default function GroupDetailPage() {
       });
 
       const result = await response.json();
-      setIsVerified(true);
+
+      if (result.isVerified) {
+        setIsVerified(true);
+      } else {
+        setIsVerified(false);
+      }
     } catch (error) {
       console.error('Error checking verification:', error);
       setIsVerified(false);
