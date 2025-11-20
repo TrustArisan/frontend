@@ -426,7 +426,7 @@ export default function CreateGroupPage() {
                 <motion.button
                   type='button'
                   onClick={toggleWeiEth}
-                  className="flex items-center ml-3 px-3 py-2.5 rounded-md bg-[#eeb446] text-white font-medium text-xs hover:bg-[#d9a33f] transition-colors shadow-sm"
+                  className="flex items-center ml-3 px-3 py-2.5 rounded-md bg-amber-400 dark:bg-amber-700 text-white font-medium text-xs hover:bg-[#d9a33f] transition-colors shadow-sm"
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                   title="Click to switch currency"

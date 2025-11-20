@@ -907,7 +907,7 @@ export default function GroupDetailPage() {
           <motion.button
             type="button"
             onClick={reloadData}
-            className="p-2.5 px-4 rounded-full text-[black] dark:text-[#648196] shadow-sm border border-[#5584a0]/20"
+            className="p-2.5 px-4 rounded-full shadow-sm border border-[#5584a0]/20 dark:border-[hsl(var(--foreground))]/20"
             whileHover={{ scale: 1.05, rotate: 180 }}
             whileTap={{ scale: 0.95 }}
             title="Reload Data"
@@ -1263,19 +1263,6 @@ export default function GroupDetailPage() {
                     </div>
                   </>
                 )}
-
-                {/* Verification Button for coordinator */}
-                {!isVerified && isCoordinator && (
-                  <GroupVerificationStatus
-                    groupAddress={id as string}
-                    title={group.settings.title}
-                    telegramUrl={group.settings.telegramGroupUrl}
-                    coordinator={group.settings.coordinator.walletAddress}
-                    commission={group.settings.coordinatorCommissionPercentage}
-                    contribution={group.settings.contributionAmountInWei}
-                    prize={group.settings.prizePercentage}
-                  />
-                )}
                 
                 {/* Member controls */}
                 {isMember && (
@@ -1377,6 +1364,26 @@ export default function GroupDetailPage() {
             </div>
           </div>
         </motion.div>
+        
+        {/* Verification Button for coordinator */}
+        {!isVerified && isCoordinator && (
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4 }}
+            className="bg-card rounded-xl border border-[hsl(var(--foreground))]/20 p-6 shadow-sm mt-6 justify-center justify-items-center"
+          >
+            <GroupVerificationStatus
+              groupAddress={id as string}
+              title={group.settings.title}
+              telegramUrl={group.settings.telegramGroupUrl}
+              coordinator={group.settings.coordinator.walletAddress}
+              commission={group.settings.coordinatorCommissionPercentage}
+              contribution={group.settings.contributionAmountInWei}
+              prize={group.settings.prizePercentage}
+            />
+          </motion.div>
+        )}
       </main>
     </div>
   );
