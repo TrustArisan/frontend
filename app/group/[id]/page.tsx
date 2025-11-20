@@ -38,6 +38,7 @@ import {
   Wallet,
   CheckCircle2,
   UserPlus,
+  LogOut,
 } from "lucide-react";
 import { Avatar } from "@/app/components/Avatar";
 import Link from "next/link";
@@ -96,6 +97,10 @@ export default function GroupDetailPage() {
   // State untuk Payment
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [isPaying, setIsPaying] = useState(false);
+
+  // State untuk Leave Group
+  const [showLeaveModal, setShowLeaveModal] = useState(false);
+  const [isLeaving, setIsLeaving] = useState(false);
 
   const {
     writeContractAsync,
@@ -512,6 +517,47 @@ export default function GroupDetailPage() {
     }
   }
 
+  async function handleLeaveGroup() {
+    if (!groupAddress || !isAddress(groupAddress)) return;
+
+    try {
+      setIsLeaving(true);
+
+      const txHash = await writeContractAsync({
+        address: groupAddress as Address,
+        abi: GROUP_ABI,
+        functionName: "leave",
+        gas: BigInt(300000),
+      });
+
+      console.log("Leave group transaction sent:", txHash);
+
+      setTimeout(async () => {
+        await reloadData();
+        setIsLeaving(false);
+        setShowLeaveModal(false);
+        router.push("/");
+      }, 3000);
+    } catch (error: any) {
+      console.error("Error leaving group:", error);
+      
+      let errorMessage = "Failed to leave group";
+      
+      if (error.message?.includes('CoordinatorCannotLeave')) {
+        errorMessage = "Coordinator cannot leave the group";
+      } else if (error.message?.includes('CannotLeaveWhileParticipating')) {
+        errorMessage = "Cannot leave while actively participating in current period";
+      } else if (error.message?.includes('User rejected')) {
+        errorMessage = "You rejected the transaction";
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      alert(errorMessage);
+      setIsLeaving(false);
+    }
+  }
+
   useEffect(() => {
     fetchGroupDetails();
     balanceRefetch();
@@ -852,6 +898,79 @@ export default function GroupDetailPage() {
                       </span>
                     ) : (
                       'Confirm Payment'
+                    )}
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Leave Group Modal */}
+      <AnimatePresence>
+        {showLeaveModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+            onClick={() => !isLeaving && setShowLeaveModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.8, opacity: 0 }}
+              transition={{ type: "spring", duration: 0.5 }}
+              className="bg-white dark:bg-[#2a3a45] rounded-2xl shadow-2xl max-w-md w-full p-8"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="text-center">
+                <div className="mx-auto w-16 h-16 bg-red-500 rounded-full flex items-center justify-center mb-4">
+                  <LogOut className="w-8 h-8 text-white" />
+                </div>
+                <h2 className="text-2xl font-bold text-[#4f7a97] dark:text-white mb-2">
+                  Leave Group?
+                </h2>
+                <p className="text-[#5c6c74] dark:text-gray-300 mb-6">
+                  Are you sure you want to leave this group? This action cannot be undone.
+                </p>
+
+                <div className="bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-lg p-4 mb-6">
+                  <div className="flex items-start gap-2">
+                    <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400 shrink-0 mt-0.5" />
+                    <div className="text-sm text-red-900 dark:text-red-300 text-left">
+                      <p className="font-semibold mb-1">Warning:</p>
+                      <ul className="list-disc list-inside space-y-1 text-xs">
+                        <li>You cannot leave while participating in the current period</li>
+                        <li>Coordinators cannot leave the group</li>
+                        <li>You will lose access to all group functions</li>
+                        <li>You'll need approval to rejoin if this is a closed group</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setShowLeaveModal(false)}
+                    disabled={isLeaving}
+                    className="flex-1 py-3 px-6 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 font-semibold rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleLeaveGroup}
+                    disabled={isLeaving}
+                    className="flex-1 py-3 px-6 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-lg transition-colors shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isLeaving ? (
+                      <span className="flex items-center justify-center gap-2">
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                        Leaving...
+                      </span>
+                    ) : (
+                      'Leave Group'
                     )}
                   </button>
                 </div>
@@ -1360,6 +1479,19 @@ export default function GroupDetailPage() {
                     Chat
                   </motion.button>
                 </Link>
+
+                {/* Leave Group Button - ONLY for non-coordinator members */}
+                {isMember && !isCoordinator && (
+                  <motion.button
+                    onClick={() => setShowLeaveModal(true)}
+                    className="flex flex-initial justify-center items-center px-5 py-3 rounded-full bg-red-600 hover:bg-red-700 text-white font-medium text-md transition-colors border border-red-700 shadow-sm hover:shadow-md"
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                  >
+                    <LogOut className="me-2" size={18} /> 
+                    <span>Leave Group</span>
+                  </motion.button>
+                )}
               </div>
             </div>
           </div>
