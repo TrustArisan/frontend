@@ -75,7 +75,7 @@ export default function GroupDetailPage() {
   const [nextCapacityTier, setNextCapacityTier] = useState<number>(0);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [pendingProposalsCount, setPendingProposalsCount] = useState<number>(0);
-  const [isVerified, setIsVerified] = useState<boolean>(false);
+  // const [isVerified, setIsVerified] = useState<boolean>(false);
   
   // State untuk Join Group Modal
   const [showJoinModal, setShowJoinModal] = useState(false);
@@ -134,26 +134,26 @@ export default function GroupDetailPage() {
     }
   }
 
-  async function checkVerificationStatus() {
-    try {
-      const response = await fetch('/api/check-verification', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ address: groupAddress }),
-      });
+  // async function checkVerificationStatus() {
+  //   try {
+  //     const response = await fetch('/api/check-verification', {
+  //       method: 'POST',
+  //       headers: { 'Content-Type': 'application/json' },
+  //       body: JSON.stringify({ address: groupAddress }),
+  //     });
 
-      const result = await response.json();
+  //     const result = await response.json();
 
-      if (result.isVerified) {
-        setIsVerified(true);
-      } else {
-        setIsVerified(false);
-      }
-    } catch (error) {
-      console.error('Error checking verification:', error);
-      setIsVerified(false);
-    }
-  }
+  //     if (result.isVerified) {
+  //       setIsVerified(true);
+  //     } else {
+  //       setIsVerified(false);
+  //     }
+  //   } catch (error) {
+  //     console.error('Error checking verification:', error);
+  //     setIsVerified(false);
+  //   }
+  // }
 
   async function fetchGroupDetails() {
     if (!publicClient || !id) return;
@@ -566,7 +566,6 @@ export default function GroupDetailPage() {
   useEffect(() => {
     fetchGroupDetails();
     balanceRefetch();
-    checkVerificationStatus();
   }, [publicClient, id]);
 
   useEffect(() => {
@@ -1503,7 +1502,7 @@ export default function GroupDetailPage() {
         </motion.div>
         
         {/* Verification Button for coordinator */}
-        {!isVerified && isCoordinator && (
+        {/* !isVerified && isCoordinator && (
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -1520,7 +1519,7 @@ export default function GroupDetailPage() {
               prize={group.settings.prizePercentage}
             />
           </motion.div>
-        )}
+        )*/}
       </main>
     </div>
   );
