@@ -348,7 +348,7 @@ export default function CreateGroupPage() {
             </div>
 
             {/* Two Column Layout for Percentage Inputs */}
-            <div className="grid grid-cols-2 gap-x-4">
+            <div className="flex flex-col gap-2 sm:grid sm:grid-cols-2 gap-x-4">
               {/* Coordinator Commission Percentage */}
               <div>
                 <label htmlFor="coordinatorCommissionPercentage" className="block text-sm font-medium text-[#4f7a97] mb-2">
