@@ -1238,7 +1238,7 @@ export default function GroupDetailPage() {
                           <motion.button
                             onClick={() => setShowUpgradeModal(true)}
                             disabled={isPending}
-                            className="px-4 py-2 rounded-lg bg-[#5584a0] hover:bg-[#4f7a97] text-white font-medium text-sm transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="px-4 py-2 rounded-lg self-center bg-[#5584a0] hover:bg-[#4f7a97] text-white font-medium text-sm transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
                             whileHover={{ scale: 1.05 }}
                             whileTap={{ scale: 0.95 }}
                           >
