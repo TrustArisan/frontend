@@ -80,6 +80,7 @@ export default function GroupDetailPage() {
   const [isJoining, setIsJoining] = useState(false);
   const [joinSuccess, setJoinSuccess] = useState(false);
   const [joinRequiresApproval, setJoinRequiresApproval] = useState(false);
+  const [joinError, setJoinError] = useState<string | null>(null);
   
   // State untuk Draw Winner
   const [showDrawWinnerModal, setShowDrawWinnerModal] = useState(false);
@@ -387,6 +388,7 @@ export default function GroupDetailPage() {
     setTelegramUsername("");
     setJoinSuccess(false);
     setJoinRequiresApproval(false);
+    setJoinError(null);
   }
 
   async function submitJoinGroup() {
@@ -396,12 +398,13 @@ export default function GroupDetailPage() {
     }
 
     if (!telegramUsername.trim()) {
-      alert("Please enter your Telegram username");
+      setJoinError("Please enter your Telegram username");
       return;
     }
 
     try {
       setIsJoining(true);
+      setJoinError(null);
 
       const functionName = group.settings.openJoinEnabled
         ? "joinGroupNoApproval"
@@ -426,7 +429,24 @@ export default function GroupDetailPage() {
       }, 2000);
     } catch (error: any) {
       console.error("Error joining group:", error);
-      alert(`Failed to join group: ${error.message || "Unknown error"}`);
+      
+      let errorMessage = "Failed to join group";
+      
+      if (error.message?.includes('User rejected')) {
+        errorMessage = "You rejected the transaction";
+      } else if (error.message?.includes('MemberAlreadyExists')) {
+        errorMessage = "You are already a member of this group";
+      } else if (error.message?.includes('GroupCapacityExceeded')) {
+        errorMessage = "Group is full. Cannot accept new members";
+      } else if (error.message?.includes('AlreadyWaitingForJoinApproval')) {
+        errorMessage = "You already have a pending join request";
+      } else if (error.message?.includes('insufficient funds')) {
+        errorMessage = "Insufficient funds for transaction";
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      setJoinError(errorMessage);
       setIsJoining(false);
     }
   }
@@ -543,7 +563,45 @@ export default function GroupDetailPage() {
               className="bg-white dark:bg-[#2a3a45] rounded-2xl shadow-2xl max-w-md w-full p-8"
               onClick={(e) => e.stopPropagation()}
             >
-              {joinSuccess ? (
+              {joinError ? (
+                /* Error State */
+                <div className="text-center">
+                  <motion.div
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    transition={{ type: "spring", duration: 0.6 }}
+                    className="mx-auto w-20 h-20 rounded-full flex items-center justify-center mb-4 bg-gradient-to-br from-red-500 to-red-600"
+                  >
+                    <XCircle className="w-10 h-10 text-white" />
+                  </motion.div>
+
+                  <h2 className="text-2xl font-bold text-[#4f7a97] dark:text-white mb-2">
+                    Failed to Join
+                  </h2>
+                  <p className="text-[#5c6c74] dark:text-gray-300 mb-6">
+                    {joinError}
+                  </p>
+
+                  <div className="bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-lg p-4 mb-6">
+                    <div className="flex items-start gap-2">
+                      <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400 shrink-0 mt-0.5" />
+                      <p className="text-sm text-red-900 dark:text-red-300 text-left">
+                        Please check the error message and try again. Make sure your wallet is connected and you have sufficient funds.
+                      </p>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => {
+                      setJoinError(null);
+                      setTelegramUsername("");
+                    }}
+                    className="w-full py-3 px-6 bg-[#5584a0] hover:bg-[#4f7a97] text-white font-semibold rounded-lg transition-colors shadow-md"
+                  >
+                    Try Again
+                  </button>
+                </div>
+              ) : joinSuccess ? (
                 /* Success State */
                 <div className="text-center">
                   <motion.div
@@ -859,6 +917,24 @@ export default function GroupDetailPage() {
           </motion.div>
         )}
 
+        {/* Reload & Theme Toggle - Above Card */}
+        <div className="flex justify-end items-center gap-2 mb-4 mt-4">
+          <motion.button
+            type="button"
+            onClick={reloadData}
+            className="p-2.5 rounded-lg bg-[#5584a0]/10 hover:bg-[#5584a0]/20 text-[#5584a0] dark:text-[#648196] hover:text-[#4f7a97] dark:hover:text-[#5584a0] transition-colors shadow-sm border border-[#5584a0]/20"
+            whileHover={{ scale: 1.05, rotate: 180 }}
+            whileTap={{ scale: 0.95 }}
+            title="Reload Data"
+          >
+            <RotateCcw size={20} />
+          </motion.button>
+          
+          <div className="p-0.5 rounded-lg bg-[#5584a0]/10 border border-[#5584a0]/20">
+            <ThemeToggle unhideText={false} />
+          </div>
+        </div>
+
         {/* Group Info Card - Existing */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -866,6 +942,7 @@ export default function GroupDetailPage() {
           transition={{ duration: 0.4 }}
           className="relative group bg-card rounded-xl border border-[#4f7a97]/10 hover:border-[#4f7a97]/30 hover:shadow-xl transition-all duration-300 p-6 shadow-sm"
         >
+
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
             <div className="flex w-full md:flex-row flex-col items-center place-items-center justify-items-center">
               <Avatar
@@ -1263,18 +1340,6 @@ export default function GroupDetailPage() {
                     Chat
                   </motion.button>
                 </Link>
-                
-                <motion.button
-                  type="button"
-                  onClick={reloadData}
-                  className="flex flex-initial justify-center px-5 py-3 rounded-full bg-primary text-primary-foreground font-medium text-md hover:bg-primary/90 transition-colors border border-[hsl(var(--foreground))]/10 shadow-sm hover:shadow-md"
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                >
-                  <RotateCcw className="me-2 font-thin px-0.5" /> Reload Data
-                </motion.button>
-                
-                <ThemeToggle unhideText={true} />
               </div>
             </div>
           </div>
