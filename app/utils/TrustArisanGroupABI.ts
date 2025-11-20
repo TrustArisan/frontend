@@ -59,6 +59,19 @@ export const GROUP_ABI = [
   },
   {
     "type": "function",
+    "name": "approveKickMemberProposal",
+    "inputs": [
+      {
+        "name": "proposalIndex",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
     "name": "approveNewCoordinatorCommissionPercentageProposal",
     "inputs": [
       {
@@ -1274,6 +1287,19 @@ export const GROUP_ABI = [
   },
   {
     "type": "function",
+    "name": "proposeKickMember",
+    "inputs": [
+      {
+        "name": "memberToKick",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
     "name": "proposeNewContributionAmountInWei",
     "inputs": [
       {
@@ -1595,6 +1621,19 @@ export const GROUP_ABI = [
   },
   {
     "type": "event",
+    "name": "MemberKicked",
+    "inputs": [
+      {
+        "name": "kickedMember",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
     "name": "MemberLeft",
     "inputs": [
       {
@@ -1822,6 +1861,11 @@ export const GROUP_ABI = [
   },
   {
     "type": "error",
+    "name": "CannotKickSelf",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "CannotLeaveWhileParticipating",
     "inputs": []
   },
@@ -1848,6 +1892,11 @@ export const GROUP_ABI = [
   {
     "type": "error",
     "name": "DidNotParticipateInPreviousRound",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "DueWinnerNotFound",
     "inputs": []
   },
   {
