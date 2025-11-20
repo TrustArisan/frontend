@@ -9,16 +9,8 @@ export async function POST(req: NextRequest) {
   try {
     const body: CheckVerificationRequest = await req.json();
 
-    const params = new URLSearchParams({
-        apikey: process.env.ETHERSCAN_API_KEY!,
-        module: 'contract',
-        action: 'getabi',
-        address: body.address
-    });
-
-    const response = await fetch(`https://api.etherscan.io/v2/api?chainid=${SEPOLIA_CHAIN_ID}`, {
+    const response = await fetch(`https://api.etherscan.io/v2/api?chainid=${SEPOLIA_CHAIN_ID}&module=contract&action=getabi&address=${body.address}`, {
       method: 'GET',
-      body: params,
     });
 
     const data = await response.json();
