@@ -941,7 +941,7 @@ export default function GroupDetailPage() {
           <motion.button
             type="button"
             onClick={reloadData}
-            className="p-2.5 rounded-lg bg-[#5584a0]/10 hover:bg-[#5584a0]/20 text-[#5584a0] dark:text-[#648196] hover:text-[#4f7a97] dark:hover:text-[#5584a0] transition-colors shadow-sm border border-[#5584a0]/20"
+            className="p-2.5 rounded-3xl text-[black] dark:text-[#648196] shadow-sm border border-[#5584a0]/20"
             whileHover={{ scale: 1.05, rotate: 180 }}
             whileTap={{ scale: 0.95 }}
             title="Reload Data"
@@ -949,7 +949,7 @@ export default function GroupDetailPage() {
             <RotateCcw size={20} />
           </motion.button>
           
-          <div className="p-0.5 rounded-lg bg-[#5584a0]/10 border border-[#5584a0]/20">
+          <div className="p-0.5 rounded-lg">
             <ThemeToggle unhideText={false} />
           </div>
         </div>
