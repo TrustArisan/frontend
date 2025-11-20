@@ -500,7 +500,7 @@ export default function CreateProposalPage() {
       </main>
 
       <div className="fixed bottom-4 right-4 z-50">
-        <ThemeToggle unhideText={true} />
+        <ThemeToggle />
       </div>
     </div>
   );
