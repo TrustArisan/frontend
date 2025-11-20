@@ -39,6 +39,7 @@ import {
   CheckCircle2,
   UserPlus,
   LogOut,
+  Zap,
 } from "lucide-react";
 import { Avatar } from "@/app/components/Avatar";
 import Link from "next/link";
@@ -75,7 +76,7 @@ export default function GroupDetailPage() {
   const [nextCapacityTier, setNextCapacityTier] = useState<number>(0);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [pendingProposalsCount, setPendingProposalsCount] = useState<number>(0);
-  // const [isVerified, setIsVerified] = useState<boolean>(false);
+  const [isVerified, setIsVerified] = useState<boolean>(false);
   
   // State untuk Join Group Modal
   const [showJoinModal, setShowJoinModal] = useState(false);
@@ -134,26 +135,26 @@ export default function GroupDetailPage() {
     }
   }
 
-  // async function checkVerificationStatus() {
-  //   try {
-  //     const response = await fetch('/api/check-verification', {
-  //       method: 'POST',
-  //       headers: { 'Content-Type': 'application/json' },
-  //       body: JSON.stringify({ address: groupAddress }),
-  //     });
+  async function checkVerificationStatus() {
+    try {
+      const response = await fetch('/api/check-verification', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ address: groupAddress }),
+      });
 
-  //     const result = await response.json();
+      const result = await response.json();
 
-  //     if (result.isVerified) {
-  //       setIsVerified(true);
-  //     } else {
-  //       setIsVerified(false);
-  //     }
-  //   } catch (error) {
-  //     console.error('Error checking verification:', error);
-  //     setIsVerified(false);
-  //   }
-  // }
+      if (result.isVerified) {
+        setIsVerified(true);
+      } else {
+        setIsVerified(false);
+      }
+    } catch (error) {
+      console.error('Error checking verification:', error);
+      setIsVerified(false);
+    }
+  }
 
   async function fetchGroupDetails() {
     if (!publicClient || !id) return;
@@ -244,35 +245,54 @@ export default function GroupDetailPage() {
   }
 
   async function fetchDrawWinnerData() {
-    if (!publicClient || !groupAddress) return;
+  if (!publicClient || !groupAddress) return;
+
+  try {
+    const pCount = await publicClient.readContract({
+      address: groupAddress,
+      abi: GROUP_ABI,
+      functionName: 'getPeriodsCount',
+    }) as bigint;
+
+    const periodsNumber = Number(pCount);
+    setPeriodsCount(periodsNumber);
+
+    if (periodsNumber === 0) {
+      setCurrentPeriod(null);
+      setIsPeriodOngoing(false);
+      setDueWinners([]);
+      return;
+    }
 
     try {
-      const [periodData, pCount] = await Promise.all([
-        publicClient.readContract({
-          address: groupAddress,
-          abi: GROUP_ABI,
-          functionName: 'getCurrentPeriod',
-        }),
-        publicClient.readContract({
-          address: groupAddress,
-          abi: GROUP_ABI,
-          functionName: 'getPeriodsCount',
-        }),
-      ]);
+      const periodData = await publicClient.readContract({
+        address: groupAddress,
+        abi: GROUP_ABI,
+        functionName: 'getCurrentPeriod',
+      }) as [Period, boolean];
 
-      const [period, ongoing] = periodData as [Period, boolean];
+      const [period, ongoing] = periodData;
 
       setCurrentPeriod(period);
       setIsPeriodOngoing(ongoing);
-      setPeriodsCount(Number(pCount));
 
-      if (ongoing && period) {
+      // ✨ TAMBAHAN: Debug info
+      console.log('=== Period Debug Info ===');
+      console.log('Period ongoing:', ongoing);
+      console.log('Rounds count:', Number(period.roundsCount));
+      console.log('Due winners count:', Number(period.dueWinnersCount));
+      console.log('Started at:', new Date(Number(period.startedAt) * 1000).toLocaleString());
+
+      if (ongoing && period && Number(period.dueWinnersCount) > 0) {
         const winnersAddresses = await publicClient.readContract({
           address: groupAddress,
           abi: GROUP_ABI,
           functionName: 'getCurrentPeriodDueWinners',
         }) as Address[];
 
+        console.log('Due winners addresses:', winnersAddresses);
+
+        // ✨ TAMBAHAN: Check contribution status untuk setiap member
         const winnersData = await Promise.all(
           winnersAddresses.map(async (addr) => {
             const member = await publicClient.readContract({
@@ -281,16 +301,37 @@ export default function GroupDetailPage() {
               functionName: 'getMemberByAddress',
               args: [addr],
             }) as Member;
+            
+            console.log(`Winner ${member.telegramUsername}:`, {
+              address: addr,
+              isActiveVoter: member.isActiveVoter,
+              latestPeriodParticipation: Number(member.latestPeriodParticipation),
+              currentPeriodIndex: periodsNumber - 1
+            });
+            
             return member;
           })
         );
 
         setDueWinners(winnersData);
+      } else {
+        setDueWinners([]);
       }
-    } catch (error) {
-      console.error('Error fetching draw winner data:', error);
+    } catch (periodError: any) {
+      if (periodError.message?.includes('NoPeriodOngoing')) {
+        console.log('No period ongoing - ready to start new period');
+        setCurrentPeriod(null);
+        setIsPeriodOngoing(false);
+        setDueWinners([]);
+      } else {
+        throw periodError;
+      }
     }
+  } catch (error) {
+    console.error('Error fetching draw winner data:', error);
   }
+}
+
 
   async function handleStartNewPeriod() {
     if (!groupAddress || !isAddress(groupAddress)) return;
@@ -315,12 +356,30 @@ export default function GroupDetailPage() {
       setTimeout(async () => {
         await fetchDrawWinnerData();
         await balanceRefetch();
+        await fetchGroupDetails();
         setIsPaying(false);
         alert('New period started successfully!');
       }, 3000);
     } catch (error: any) {
       console.error('Error starting new period:', error);
-      alert(`Failed to start new period: ${error.message || "Unknown error"}`);
+      
+      let errorMessage = "Failed to start new period";
+      
+      if (error.message?.includes('User rejected')) {
+        errorMessage = "You rejected the transaction";
+      } else if (error.message?.includes('LastPeriodNotEnded')) {
+        errorMessage = "Previous period has not ended yet";
+      } else if (error.message?.includes('IncompleteProposalsRemaining')) {
+        errorMessage = "Complete all pending proposals first";
+      } else if (error.message?.includes('IncorrectContributionAmount')) {
+        errorMessage = "Incorrect contribution amount";
+      } else if (error.message?.includes('insufficient funds')) {
+        errorMessage = "Insufficient funds for transaction";
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      alert(errorMessage);
       setIsPaying(false);
     }
   }
@@ -356,6 +415,7 @@ export default function GroupDetailPage() {
       setTimeout(async () => {
         await balanceRefetch();
         await fetchDrawWinnerData();
+        await fetchGroupDetails();
         setIsPaying(false);
         setShowPaymentModal(false);
         alert('Payment successful!');
@@ -368,17 +428,34 @@ export default function GroupDetailPage() {
   }
 
   async function handleOpenDrawWinner() {
-    setShowDrawWinnerModal(true);
     await fetchDrawWinnerData();
+    setShowDrawWinnerModal(true);
   }
 
   async function handleDrawWinner() {
-    if (!groupAddress || !isAddress(groupAddress) || !periodsCount) return;
+    if (!groupAddress || !isAddress(groupAddress)) {
+      console.error('Invalid group address');
+      return;
+    }
+
+    if (!isPeriodOngoing) {
+      alert('No active period to draw winner from');
+      return;
+    }
+
+    if (periodsCount === 0) {
+      alert('No periods exist yet');
+      return;
+    }
 
     try {
       setIsDrawing(true);
       
       const currentPeriodIndex = periodsCount - 1;
+
+      console.log('=== Drawing Winner ===');
+      console.log('Period index:', currentPeriodIndex);
+      console.log('Group address:', groupAddress);
 
       const txHash = await writeContractAsync({
         address: groupAddress,
@@ -393,15 +470,31 @@ export default function GroupDetailPage() {
       setTimeout(async () => {
         await fetchDrawWinnerData();
         await balanceRefetch();
-        
-        if (dueWinners.length > 0) {
-          setLastWinner(dueWinners[0]);
-        }
+        await fetchGroupDetails();
         setIsDrawing(false);
+        alert('Winner drawn successfully!');
       }, 3000);
     } catch (error: any) {
-      console.error('Error drawing winner:', error);
-      alert(`Failed to draw winner: ${error.message || "Unknown error"}`);
+      console.error('=== Error Drawing Winner ===');
+      console.error('Error:', error);
+      
+      let errorMessage = "Failed to draw winner";
+      
+      if (error.message?.includes('User rejected')) {
+        errorMessage = "You rejected the transaction";
+      } else if (error.message?.includes('NoPeriodOngoing')) {
+        errorMessage = "No active period to draw winner from";
+      } else if (error.message?.includes('NotCoordinator')) {
+        errorMessage = "Only coordinator can draw winner";
+      } else if (error.message?.includes('NoDueWinnersRemaining')) {
+        errorMessage = "No members eligible for draw";
+      } else if (error.message?.includes('insufficient funds')) {
+        errorMessage = "Insufficient funds for transaction";
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      alert(errorMessage);
       setIsDrawing(false);
     }
   }
@@ -502,6 +595,12 @@ export default function GroupDetailPage() {
     if (!groupAddress || !isAddress(groupAddress)) return;
 
     try {
+      console.log('=== Upgrading Capacity ===');
+      console.log('Group address:', groupAddress);
+      console.log('Upgrade cost:', formatEther(capacityUpgradeCost), 'ETH');
+      console.log('Current capacity:', group.settings.maxCapacity);
+      console.log('Next capacity:', nextCapacityTier);
+
       const txHash = await writeContractAsync({
         address: groupAddress as Address,
         abi: GROUP_ABI,
@@ -515,10 +614,26 @@ export default function GroupDetailPage() {
       
       setTimeout(async () => {
         await reloadData();
-      }, 2000);
+        alert('Capacity upgraded successfully!');
+      }, 3000);
     } catch (error: any) {
       console.error("Error upgrading capacity:", error);
-      alert(`Failed to upgrade capacity: ${error.message || "Unknown error"}`);
+      
+      let errorMessage = "Failed to upgrade capacity";
+      
+      if (error.message?.includes('User rejected')) {
+        errorMessage = "You rejected the transaction";
+      } else if (error.message?.includes('CannotUpgradeAtCurrentMemberCount')) {
+        errorMessage = "Cannot upgrade: Group must be at 80% capacity";
+      } else if (error.message?.includes('IncorrectCapacityUpgradePayment')) {
+        errorMessage = "Incorrect payment amount for upgrade";
+      } else if (error.message?.includes('insufficient funds')) {
+        errorMessage = "Insufficient funds for transaction";
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      alert(errorMessage);
     }
   }
 
@@ -566,6 +681,7 @@ export default function GroupDetailPage() {
   useEffect(() => {
     fetchGroupDetails();
     balanceRefetch();
+    checkVerificationStatus();
   }, [publicClient, id]);
 
   useEffect(() => {
@@ -573,6 +689,12 @@ export default function GroupDetailPage() {
       checkMembership();
     }
   }, [isConnected, address, group]);
+
+  useEffect(() => {
+    if (group && publicClient && groupAddress) {
+      fetchDrawWinnerData();
+    }
+  }, [group, publicClient, groupAddress]);
 
   const prizeAmount = currentPeriod 
     ? (BigInt(currentPeriod.contributionAmountInWei) * BigInt(currentPeriod.prizePercentage)) / BigInt(100)
@@ -610,11 +732,14 @@ export default function GroupDetailPage() {
   const isCapacityNearFull = capacityPercentage >= 80;
   const isCapacityFull = membersCount >= maxCapacity;
 
+  const canStartNewPeriod = isCoordinator && !isPeriodOngoing;
+  const canDrawWinner = isCoordinator && isPeriodOngoing && dueWinners.length > 0;
+
   return (
     <div className="min-h-screen bg-background">
       <Header />
 
-      {/* Join Group Modal - CLEAN DESIGN */}
+      {/* Join Group Modal */}
       <AnimatePresence>
         {showJoinModal && (
           <motion.div
@@ -633,7 +758,6 @@ export default function GroupDetailPage() {
               onClick={(e) => e.stopPropagation()}
             >
               {joinError ? (
-                /* Error State */
                 <div className="text-center">
                   <motion.div
                     initial={{ scale: 0 }}
@@ -643,23 +767,8 @@ export default function GroupDetailPage() {
                   >
                     <XCircle className="w-10 h-10 text-white" />
                   </motion.div>
-
-                  <h2 className="text-2xl font-bold text-[#4f7a97] dark:text-white mb-2">
-                    Failed to Join
-                  </h2>
-                  <p className="text-[#5c6c74] dark:text-gray-300 mb-6">
-                    {joinError}
-                  </p>
-
-                  <div className="bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-lg p-4 mb-6">
-                    <div className="flex items-start gap-2">
-                      <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400 shrink-0 mt-0.5" />
-                      <p className="text-sm text-red-900 dark:text-red-300 text-left">
-                        Please check the error message and try again. Make sure your wallet is connected and you have sufficient funds.
-                      </p>
-                    </div>
-                  </div>
-
+                  <h2 className="text-2xl font-bold text-[#4f7a97] dark:text-white mb-2">Failed to Join</h2>
+                  <p className="text-[#5c6c74] dark:text-gray-300 mb-6">{joinError}</p>
                   <button
                     onClick={() => {
                       setJoinError(null);
@@ -671,7 +780,6 @@ export default function GroupDetailPage() {
                   </button>
                 </div>
               ) : joinSuccess ? (
-                /* Success State */
                 <div className="text-center">
                   <motion.div
                     initial={{ scale: 0 }}
@@ -683,41 +791,16 @@ export default function GroupDetailPage() {
                         : 'bg-gradient-to-br from-[#10b981] to-[#059669]'
                     }`}
                   >
-                    {joinRequiresApproval ? (
-                      <Clock className="w-10 h-10 text-white" />
-                    ) : (
-                      <CheckCircle2 className="w-10 h-10 text-white" />
-                    )}
+                    {joinRequiresApproval ? <Clock className="w-10 h-10 text-white" /> : <CheckCircle2 className="w-10 h-10 text-white" />}
                   </motion.div>
-
                   <h2 className="text-2xl font-bold text-[#4f7a97] dark:text-white mb-2">
                     {joinRequiresApproval ? 'Request Sent!' : 'Welcome Aboard!'}
                   </h2>
                   <p className="text-[#5c6c74] dark:text-gray-300 mb-6">
                     {joinRequiresApproval 
-                      ? 'Your join request has been submitted successfully. Please wait for approval from existing members.'
-                      : 'You have successfully joined the group! Welcome to the community.'
-                    }
+                      ? 'Your join request has been submitted successfully.'
+                      : 'You have successfully joined the group!'}
                   </p>
-
-                  <div className="bg-muted/50 rounded-lg p-4 mb-6">
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-muted-foreground">Your Username:</span>
-                      <span className="font-semibold text-[#4f7a97] dark:text-white">
-                        {telegramUsername}
-                      </span>
-                    </div>
-                  </div>
-
-                  {joinRequiresApproval && (
-                    <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg p-3 mb-6 flex items-start gap-2">
-                      <AlertCircle className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
-                      <p className="text-xs text-blue-900 dark:text-blue-300 text-left">
-                        Members will vote on your request. You'll be notified once approved.
-                      </p>
-                    </div>
-                  )}
-
                   <button
                     onClick={() => {
                       setShowJoinModal(false);
@@ -729,7 +812,6 @@ export default function GroupDetailPage() {
                   </button>
                 </div>
               ) : (
-                /* Input State */
                 <div>
                   <div className="text-center mb-6">
                     <div className="mx-auto w-16 h-16 bg-gradient-to-br from-[#5584a0] to-[#4f7a97] rounded-full flex items-center justify-center mb-4">
@@ -738,11 +820,7 @@ export default function GroupDetailPage() {
                     <h2 className="text-2xl font-bold text-[#4f7a97] dark:text-white mb-2">
                       Join {group.settings.title}
                     </h2>
-                    <p className="text-[#5c6c74] dark:text-gray-300">
-                      Enter your Telegram username to join this group
-                    </p>
                   </div>
-
                   <div className="mb-6">
                     <label className="block text-sm font-medium text-[#4f7a97] dark:text-gray-200 mb-2">
                       Telegram Username
@@ -753,62 +831,24 @@ export default function GroupDetailPage() {
                       onChange={(e) => setTelegramUsername(e.target.value)}
                       placeholder="@username"
                       disabled={isJoining}
-                      className="w-full px-4 py-3 bg-white dark:bg-[#1e2a35] border border-[#648196]/30 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#5584a0] focus:border-transparent text-[#4f7a97] dark:text-white placeholder-[#5c6c74]/50 dark:placeholder-gray-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                      onKeyPress={(e) => {
-                        if (e.key === 'Enter' && !isJoining) {
-                          submitJoinGroup();
-                        }
-                      }}
+                      className="w-full px-4 py-3 bg-white dark:bg-[#1e2a35] border border-[#648196]/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#5584a0]"
                       autoFocus
                     />
-                    <p className="text-xs text-[#5c6c74] dark:text-gray-400 mt-2">
-                      This will be used to identify you in the group
-                    </p>
                   </div>
-
-                  <div className={`rounded-lg p-3 mb-6 flex items-start gap-2 ${
-                    group.settings.openJoinEnabled
-                      ? 'bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800'
-                      : 'bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800'
-                  }`}>
-                    <AlertCircle className={`w-4 h-4 shrink-0 mt-0.5 ${
-                      group.settings.openJoinEnabled
-                        ? 'text-green-600 dark:text-green-400'
-                        : 'text-blue-600 dark:text-blue-400'
-                    }`} />
-                    <p className={`text-xs text-left ${
-                      group.settings.openJoinEnabled
-                        ? 'text-green-900 dark:text-green-300'
-                        : 'text-blue-900 dark:text-blue-300'
-                    }`}>
-                      {group.settings.openJoinEnabled
-                        ? 'This group has open join enabled. You will be added immediately after submission.'
-                        : 'This group requires approval. Your request will be sent to existing members for voting.'
-                      }
-                    </p>
-                  </div>
-
                   <div className="flex gap-3">
                     <button
                       onClick={() => setShowJoinModal(false)}
                       disabled={isJoining}
-                      className="flex-1 py-3 px-6 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 font-semibold rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="flex-1 py-3 px-6 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 font-semibold rounded-lg transition-colors"
                     >
                       Cancel
                     </button>
                     <button
                       onClick={submitJoinGroup}
                       disabled={isJoining || !telegramUsername.trim()}
-                      className="flex-1 py-3 px-6 bg-[#5584a0] hover:bg-[#4f7a97] text-white font-semibold rounded-lg transition-colors shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="flex-1 py-3 px-6 bg-[#5584a0] hover:bg-[#4f7a97] text-white font-semibold rounded-lg transition-colors shadow-md disabled:opacity-50"
                     >
-                      {isJoining ? (
-                        <span className="flex items-center justify-center gap-2">
-                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                          Joining...
-                        </span>
-                      ) : (
-                        group.settings.openJoinEnabled ? 'Join Now' : 'Send Request'
-                      )}
+                      {isJoining ? 'Joining...' : (group.settings.openJoinEnabled ? 'Join Now' : 'Send Request')}
                     </button>
                   </div>
                 </div>
@@ -818,7 +858,7 @@ export default function GroupDetailPage() {
         )}
       </AnimatePresence>
 
-      {/* Payment Modal - Existing */}
+      {/* Payment Modal */}
       <AnimatePresence>
         {showPaymentModal && (
           <motion.div
@@ -826,13 +866,12 @@ export default function GroupDetailPage() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
-            onClick={() => setShowPaymentModal(false)}
+            onClick={() => !isPaying && setShowPaymentModal(false)}
           >
             <motion.div
               initial={{ scale: 0.8, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.8, opacity: 0 }}
-              transition={{ type: "spring", duration: 0.5 }}
               className="bg-white dark:bg-[#2a3a45] rounded-2xl shadow-2xl max-w-md w-full p-8"
               onClick={(e) => e.stopPropagation()}
             >
@@ -846,8 +885,7 @@ export default function GroupDetailPage() {
                 <p className="text-[#5c6c74] mb-6">
                   {isCoordinator 
                     ? "As coordinator, you must contribute to start the period" 
-                    : "Contribute your share to participate in this period"
-                  }
+                    : "Contribute your share to participate in this period"}
                 </p>
                 
                 <div className="bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-lg p-4 mb-6">
@@ -858,28 +896,6 @@ export default function GroupDetailPage() {
                   <p className="text-xs text-[#5c6c74]">
                     This is the fixed contribution amount for this group
                   </p>
-                </div>
-
-                <div className="mb-6">
-                  <div className="text-center p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border">
-                    <p className="text-sm text-[#5c6c74] mb-2">You will pay:</p>
-                    <p className="text-2xl font-bold text-[#4f7a97]">{defaultPaymentAmount} ETH</p>
-                    <p className="text-xs text-[#5c6c74] mt-2">
-                      Amount cannot be changed
-                    </p>
-                  </div>
-                </div>
-
-                <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg p-3 mb-6">
-                  <div className="flex items-start gap-2">
-                    <AlertCircle className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
-                    <p className="text-xs text-blue-900 dark:text-blue-300 text-left">
-                      {isCoordinator
-                        ? "As coordinator, your payment is required to start the period. All members must also contribute to participate."
-                        : "Your payment is required to participate in this period. The coordinator must also contribute to start the period."
-                      }
-                    </p>
-                  </div>
                 </div>
                 
                 <div className="flex gap-3">
@@ -895,13 +911,220 @@ export default function GroupDetailPage() {
                     disabled={isPaying}
                     className="flex-1 py-3 px-6 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg transition-colors shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    {isPaying ? (
+                    {isPaying ? 'Processing...' : 'Confirm Payment'}
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Draw Winner Modal - COMPLETE */}
+      <AnimatePresence>
+        {showDrawWinnerModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+            onClick={() => !isDrawing && setShowDrawWinnerModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.8, opacity: 0 }}
+              transition={{ type: "spring", duration: 0.5 }}
+              className="bg-white dark:bg-[#2a3a45] rounded-2xl shadow-2xl max-w-2xl w-full p-8 max-h-[90vh] overflow-y-auto"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="text-center mb-6">
+                <div className="mx-auto w-20 h-20 bg-gradient-to-br from-[#eeb446] to-[#d9a33f] rounded-full flex items-center justify-center mb-4">
+                  <Trophy className="w-10 h-10 text-white" />
+                </div>
+                <h2 className="text-3xl font-bold text-[#4f7a97] dark:text-white mb-2">
+                  Draw Winner
+                </h2>
+                <p className="text-[#5c6c74] dark:text-gray-300">
+                  {isPeriodOngoing ? 'Period is ongoing - ready to draw!' : 'No active period'}
+                </p>
+              </div>
+
+              {/* Period Info */}
+              {currentPeriod && isPeriodOngoing && (
+                <div className="mb-6 bg-muted/50 rounded-lg p-4">
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <p className="text-muted-foreground">Prize Amount:</p>
+                      <p className="text-lg font-bold text-[#4f7a97]">
+                        {formatEther(prizeAmount)} ETH
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">Due Winners:</p>
+                      <p className="text-lg font-bold text-[#4f7a97]">
+                        {dueWinners.length}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Due Winners List */}
+              {dueWinners.length > 0 && (
+                <div className="mb-6">
+                  <h3 className="font-semibold text-[#4f7a97] mb-3">Eligible Winners:</h3>
+                  <div className="space-y-2 max-h-60 overflow-y-auto">
+                    {dueWinners.map((winner, idx) => (
+                      <div
+                        key={idx}
+                        className="bg-white dark:bg-gray-800 border border-[#5584a0]/20 rounded-lg p-3 flex items-center justify-between"
+                      >
+                        <div className="flex items-center gap-3">
+                          <Avatar name={winner.telegramUsername} size="md" />
+                          <div>
+                            <p className="font-medium text-[#4f7a97]">
+                              {winner.telegramUsername}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {winner.walletAddress.slice(0, 6)}...{winner.walletAddress.slice(-4)}
+                            </p>
+                          </div>
+                        </div>
+                        <Sparkles className="w-5 h-5 text-[#eeb446]" />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Action Buttons */}
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowDrawWinnerModal(false)}
+                  disabled={isDrawing}
+                  className="flex-1 py-3 px-6 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 font-semibold rounded-lg transition-colors"
+                >
+                  Close
+                </button>
+                <button
+                  onClick={handleDrawWinner}
+                  disabled={isDrawing || !canDrawWinner}
+                  className="flex-1 py-3 px-6 bg-gradient-to-r from-[#eeb446] to-[#d9a33f] hover:from-[#d9a33f] hover:to-[#c9933f] text-white font-semibold rounded-lg transition-colors shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isDrawing ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      Drawing...
+                    </span>
+                  ) : (
+                    <>
+                      <Trophy className="w-5 h-5 inline mr-2" />
+                      Draw Winner Now
+                    </>
+                  )}
+                </button>
+              </div>
+
+              {!canDrawWinner && isPeriodOngoing && (
+                <div className="mt-4 p-3 bg-yellow-50 dark:bg-yellow-950/30 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+                  <p className="text-sm text-yellow-800 dark:text-yellow-300 text-center">
+                    No eligible winners at this moment
+                  </p>
+                </div>
+              )}
+
+              {!isPeriodOngoing && (
+                <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg">
+                  <p className="text-sm text-blue-800 dark:text-blue-300 text-center">
+                    Start a new period to enable winner drawing
+                  </p>
+                </div>
+              )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Upgrade Capacity Modal - COMPLETE */}
+      <AnimatePresence>
+        {showUpgradeModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+            onClick={() => !isPending && setShowUpgradeModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.8, opacity: 0 }}
+              transition={{ type: "spring", duration: 0.5 }}
+              className="bg-white dark:bg-[#2a3a45] rounded-2xl shadow-2xl max-w-md w-full p-8"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="text-center">
+                <div className="mx-auto w-16 h-16 bg-[#eeb446] rounded-full flex items-center justify-center mb-4">
+                  <Zap className="w-8 h-8 text-white" />
+                </div>
+                <h2 className="text-2xl font-bold text-[#4f7a97] dark:text-white mb-2">
+                  Upgrade Capacity
+                </h2>
+                <p className="text-[#5c6c74] dark:text-gray-300 mb-6">
+                  Increase your group's maximum capacity
+                </p>
+
+                <div className="bg-[#eeb446]/10 border border-[#eeb446]/30 rounded-lg p-4 mb-6">
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-muted-foreground">Current Capacity:</span>
+                      <span className="font-bold text-[#4f7a97]">{maxCapacity} members</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-muted-foreground">New Capacity:</span>
+                      <span className="font-bold text-[#4f7a97]">{nextCapacityTier} members</span>
+                    </div>
+                    <div className="pt-3 border-t border-[#eeb446]/20">
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm font-medium text-muted-foreground">Upgrade Cost:</span>
+                        <span className="text-lg font-bold text-[#eeb446]">
+                          {formatEther(capacityUpgradeCost)} ETH
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg p-3 mb-6">
+                  <div className="flex items-start gap-2">
+                    <AlertCircle className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
+                    <p className="text-xs text-blue-900 dark:text-blue-300 text-left">
+                      Upgrading capacity allows you to accept more members into your group. The upgrade is permanent.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setShowUpgradeModal(false)}
+                    disabled={isPending}
+                    className="flex-1 py-3 px-6 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 font-semibold rounded-lg transition-colors disabled:opacity-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleUpgradeCapacity}
+                    disabled={isPending}
+                    className="flex-1 py-3 px-6 bg-[#eeb446] hover:bg-[#d9a33f] text-white font-semibold rounded-lg transition-colors shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isPending ? (
                       <span className="flex items-center justify-center gap-2">
                         <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                        Processing...
+                        Upgrading...
                       </span>
                     ) : (
-                      'Confirm Payment'
+                      'Confirm Upgrade'
                     )}
                   </button>
                 </div>
@@ -925,7 +1148,6 @@ export default function GroupDetailPage() {
               initial={{ scale: 0.8, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.8, opacity: 0 }}
-              transition={{ type: "spring", duration: 0.5 }}
               className="bg-white dark:bg-[#2a3a45] rounded-2xl shadow-2xl max-w-md w-full p-8"
               onClick={(e) => e.stopPropagation()}
             >
@@ -937,45 +1159,23 @@ export default function GroupDetailPage() {
                   Leave Group?
                 </h2>
                 <p className="text-[#5c6c74] dark:text-gray-300 mb-6">
-                  Are you sure you want to leave this group? This action cannot be undone.
+                  Are you sure you want to leave this group?
                 </p>
-
-                <div className="bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-lg p-4 mb-6">
-                  <div className="flex items-start gap-2">
-                    <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400 shrink-0 mt-0.5" />
-                    <div className="text-sm text-red-900 dark:text-red-300 text-left">
-                      <p className="font-semibold mb-1">Warning:</p>
-                      <ul className="list-disc list-inside space-y-1 text-xs">
-                        <li>You cannot leave while participating in the current period</li>
-                        <li>Coordinators cannot leave the group</li>
-                        <li>You will lose access to all group functions</li>
-                        <li>You'll need approval to rejoin if this is a closed group</li>
-                      </ul>
-                    </div>
-                  </div>
-                </div>
-
+                
                 <div className="flex gap-3">
                   <button
                     onClick={() => setShowLeaveModal(false)}
                     disabled={isLeaving}
-                    className="flex-1 py-3 px-6 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 font-semibold rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="flex-1 py-3 px-6 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 font-semibold rounded-lg transition-colors"
                   >
                     Cancel
                   </button>
                   <button
                     onClick={handleLeaveGroup}
                     disabled={isLeaving}
-                    className="flex-1 py-3 px-6 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-lg transition-colors shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="flex-1 py-3 px-6 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-lg transition-colors shadow-md disabled:opacity-50"
                   >
-                    {isLeaving ? (
-                      <span className="flex items-center justify-center gap-2">
-                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                        Leaving...
-                      </span>
-                    ) : (
-                      'Leave Group'
-                    )}
+                    {isLeaving ? 'Leaving...' : 'Leave Group'}
                   </button>
                 </div>
               </div>
@@ -984,72 +1184,41 @@ export default function GroupDetailPage() {
         )}
       </AnimatePresence>
 
-      {/* Draw Winner Modal - Existing (abbreviated for space) */}
-      <AnimatePresence>
-        {showDrawWinnerModal && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
-            onClick={() => setShowDrawWinnerModal(false)}
-          >
-            {/* Draw Winner content here - keep existing implementation */}
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Upgrade Capacity Modal - Existing (abbreviated for space) */}
-      <AnimatePresence>
-        {showUpgradeModal && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
-            onClick={() => setShowUpgradeModal(false)}
-          >
-            {/* Upgrade modal content here - keep existing */}
-          </motion.div>
-        )}
-      </AnimatePresence>
-
       <main className="container mx-auto px-4 py-8">
-        {/* Reload & Theme Toggle - Above Card */}
+        {/* Header */}
         <div className="flex justify-between items-center gap-2 mb-4">
           <motion.button
-          onClick={() => router.push("/")}
-          className="flex pe-8 py-3 items-center rounded-full bg-primary text-primary-foreground font-medium text-md hover:bg-primary/90 transition-colors"
-          whileHover={{ x: -4 }}
-          whileTap={{ scale: 0.95 }}
-        >
-          <ChevronLeft size={18} className="me-4" />
-          Back to groups
-        </motion.button>
-        <div className="flex grow gap-2 justify-end">
-          <motion.button
-            type="button"
-            onClick={reloadData}
-            className="p-2.5 px-4 rounded-full shadow-sm border border-[#5584a0]/20 dark:border-[hsl(var(--foreground))]/20"
-            whileHover={{ scale: 1.05, rotate: 180 }}
+            onClick={() => router.push("/")}
+            className="flex pe-8 py-3 items-center rounded-full bg-primary text-primary-foreground font-medium text-md hover:bg-primary/90 transition-colors"
+            whileHover={{ x: -4 }}
             whileTap={{ scale: 0.95 }}
-            title="Reload Data"
           >
-            <RotateCcw size={20} />
+            <ChevronLeft size={18} className="me-4" />
+            Back to groups
           </motion.button>
-          
-          <div className="p-0.5 rounded-lg">
-            <ThemeToggle unhideText={false} />
+          <div className="flex grow gap-2 justify-end">
+            <motion.button
+              type="button"
+              onClick={reloadData}
+              className="p-2.5 px-4 rounded-full shadow-sm border border-[#5584a0]/20 dark:border-[hsl(var(--foreground))]/20"
+              whileHover={{ scale: 1.05, rotate: 180 }}
+              whileTap={{ scale: 0.95 }}
+              title="Reload Data"
+            >
+              <RotateCcw size={20} />
+            </motion.button>
+            
+            <div className="p-0.5 rounded-lg">
+              <ThemeToggle unhideText={false} />
+            </div>
           </div>
         </div>
-        </div>
 
-        {/* Pending Proposals Banner - Existing */}
+        {/* Pending Proposals Banner */}
         {pendingProposalsCount > 0 && isMember && !group.settings.openJoinEnabled && (
           <motion.div
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4 }}
             className="mt-4 bg-[#eeb446]/10 border border-[#eeb446]/30 rounded-xl p-4 shadow-sm mb-4"
           >
             <div className="flex items-start justify-between gap-4">
@@ -1078,14 +1247,12 @@ export default function GroupDetailPage() {
           </motion.div>
         )}
 
-        {/* Group Info Card - Existing */}
+        {/* Group Info Card */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4 }}
           className="relative group bg-card rounded-xl border border-[#4f7a97]/10 hover:border-[#4f7a97]/30 hover:shadow-xl transition-all duration-300 p-6 shadow-sm"
         >
-
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
             <div className="flex w-full md:flex-row flex-col items-center place-items-center justify-items-center">
               <Avatar
@@ -1100,14 +1267,11 @@ export default function GroupDetailPage() {
                 <p className="text-muted-foreground md:text-start text-center">
                   Managed by {group.settings.coordinator.telegramUsername}
                 </p>
-                <p className="text-xs md:text-start text-center">
-                  Group ID: {id}
-                </p>
               </div>
             </div>
           </div>
 
-          {/* Stats Grid - Keep existing implementation */}
+          {/* Stats Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="bg-muted/50 p-4 rounded-lg">
               <div className="flex items-center justify-between mb-1">
@@ -1131,44 +1295,22 @@ export default function GroupDetailPage() {
                   / {maxCapacity}
                 </span>
               </p>
-              {isCapacityNearFull && (
-                <div className="mt-2">
-                  <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                    <div 
-                      className={`h-2 rounded-full transition-all ${
-                        isCapacityFull 
-                          ? 'bg-red-500' 
-                          : 'bg-yellow-500'
-                      }`}
-                      style={{ width: `${Math.min(capacityPercentage, 100)}%` }}
-                    />
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {capacityPercentage.toFixed(0)}% capacity used
-                  </p>
-                </div>
-              )}
             </div>
 
-            {/* Other stats - keep existing */}
             <div className="bg-muted/50 p-4 rounded-lg">
               <div className="flex items-center gap-2 text-muted-foreground mb-1">
                 <Coins size={18} />
                 <span className="text-sm font-medium">Contribution</span>
               </div>
               <p className="text-2xl font-semibold">
-                {group.settings.contributionAmount
-                  ? `${group.settings.contributionAmount / 1e18} ETH`
-                  : "N/A"}
+                {defaultPaymentAmount} ETH
               </p>
             </div>
 
             <div className="bg-muted/50 p-4 rounded-lg">
               <div className="flex items-center gap-2 text-muted-foreground mb-1">
                 <Percent size={18} />
-                <span className="text-sm font-medium">
-                  Coordinator Commission Percentage
-                </span>
+                <span className="text-sm font-medium">Coordinator Commission</span>
               </div>
               <p className="text-2xl font-semibold">
                 {group.settings.coordinatorCommissionPercentage}%
@@ -1192,334 +1334,246 @@ export default function GroupDetailPage() {
               </div>
               {!(isLoadingBalance || isFetchingBalance) ? (
                 <p className="text-2xl font-semibold">
-                  {balanceData?.value ? formatEther(balanceData.value) : "0"}{" "}
-                  ETH
+                  {balanceData?.value ? formatEther(balanceData.value) : "0"} ETH
                 </p>
               ) : (
-                <div className="animate-pulse space-y-2">
+                <div className="animate-pulse">
                   <div className="w-32 h-8 bg-gray-300 rounded"></div>
                 </div>
               )}
             </div>
           </div>
-
-          {/* About Section */}
-          <div className="mt-8">
-            <h2 className="text-xl font-semibold mb-4">About This Group</h2>
-            <div className="space-y-4">
-              <p className="text-muted-foreground">
-                This is a TrustArisan group where members contribute{" "}
-                {group.settings.contributionAmount / 1e18} ETH per cycle. The
-                coordinator takes a{" "}
-                {group.settings.coordinatorCommissionPercentage}% commission,
-                and the prize pool is {group.settings.prizePercentage}% of the
-                total contributions. Commission is subject to 5% platform fee.
-              </p>
-            </div>
-          </div>
-
-          <div className="absolute top-0 right-0 w-20 h-20 bg-linear-to-br from-[#eeb446]/10 to-transparent rounded-bl-full opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
         </motion.div>
         
         {/* Controls Section */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4 }}
           className="bg-card rounded-xl border border-[hsl(var(--foreground))]/20 p-6 shadow-sm mt-6"
         >
-          <div>
-            <div className="flex space-y-4">
-              <div className="w-full grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                {/* Coordinator controls - keep existing */}
-                {isCoordinator && (
-                  <>
-                    {/* Open Join Toggle */}
-                    <div className="col-span-1 sm:col-span-2 md:col-span-3 lg:col-span-4">
-                      <div className="bg-muted/50 rounded-xl p-4 border border-[hsl(var(--foreground))]/10">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-3">
-                            <div
-                              className={`p-2.5 rounded-lg transition-colors ${
-                                group.settings.openJoinEnabled
-                                  ? "bg-emerald-100"
-                                  : "bg-muted"
-                              }`}
-                            >
-                              {group.settings.openJoinEnabled ? (
-                                <BadgeCheck className="w-5 h-5 text-emerald-600" />
-                              ) : (
-                                <Badge className="w-5 h-5 text-muted-foreground" />
-                              )}
-                            </div>
-                            <div>
-                              <h3 className="font-semibold">Open Join</h3>
-                              <p className="text-xs text-muted-foreground mt-0.5">
-                                {group.settings.openJoinEnabled
-                                  ? "Members can join directly"
-                                  : "Requires approval to join"}
-                              </p>
-                            </div>
-                          </div>
-
-                          <motion.button
-                            onClick={toggleOpenJoin}
-                            disabled={isPending}
-                            className={`relative w-14 h-7 rounded-full transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 ${
-                              group.settings.openJoinEnabled
-                                ? "bg-emerald-500 focus:ring-emerald-500"
-                                : 'bg-slate-400 focus:ring-slate-400'
-                            } ${
-                              isPending
-                                ? "opacity-50 cursor-not-allowed"
-                                : "cursor-pointer"
-                            }`}
-                            whileTap={{ scale: 0.95 }}
-                          >
-                            <motion.div
-                              className="absolute top-0.5 left-0.5 w-6 h-6 bg-white rounded-full shadow-md"
-                              animate={{
-                                x: group.settings.openJoinEnabled ? 28 : 0,
-                              }}
-                              transition={{
-                                type: "spring",
-                                stiffness: 500,
-                                damping: 30,
-                              }}
-                            />
-                          </motion.button>
+          <div className="w-full grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            {/* Coordinator controls */}
+            {isCoordinator && (
+              <>
+                {/* Open Join Toggle */}
+                <div className="col-span-1 sm:col-span-2 md:col-span-3 lg:col-span-4">
+                  <div className="bg-muted/50 rounded-xl p-4 border border-[hsl(var(--foreground))]/10">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className={`p-2.5 rounded-lg transition-colors ${
+                          group.settings.openJoinEnabled ? "bg-emerald-100" : "bg-muted"
+                        }`}>
+                          {group.settings.openJoinEnabled ? (
+                            <BadgeCheck className="w-5 h-5 text-emerald-600" />
+                          ) : (
+                            <Badge className="w-5 h-5 text-muted-foreground" />
+                          )}
                         </div>
+                        <div>
+                          <h3 className="font-semibold">Open Join</h3>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            {group.settings.openJoinEnabled
+                              ? "Members can join directly"
+                              : "Requires approval to join"}
+                          </p>
+                        </div>
+                      </div>
 
-                        <div className="mt-4 pt-4 border-t border-[hsl(var(--foreground))]/10">
-                          <div
-                            className={`text-xs font-medium px-3 py-2 rounded-lg ${
-                              group.settings.openJoinEnabled
-                                ? "bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950 dark:text-emerald-400 dark:border-emerald-800"
-                                : "bg-muted text-muted-foreground border border-[hsl(var(--foreground))]/10"
-                            }`}
-                          >
-                            {group.settings.openJoinEnabled ? (
-                              <div className="flex items-center gap-2">
-                                <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
-                                <span>
-                                  Group is open - Anyone can join immediately
-                                </span>
-                              </div>
-                            ) : (
-                              <div className="flex items-center gap-2">
-                                <div className="w-1.5 h-1.5 bg-muted-foreground rounded-full" />
-                                <span>
-                                  Group is closed - Join requests need approval
-                                </span>
-                              </div>
+                      <motion.button
+                        onClick={toggleOpenJoin}
+                        disabled={isPending}
+                        className={`relative w-14 h-7 rounded-full transition-all duration-300 ${
+                          group.settings.openJoinEnabled ? "bg-emerald-500" : 'bg-slate-400'
+                        } ${isPending ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
+                        whileTap={{ scale: 0.95 }}
+                      >
+                        <motion.div
+                          className="absolute top-0.5 left-0.5 w-6 h-6 bg-white rounded-full shadow-md"
+                          animate={{ x: group.settings.openJoinEnabled ? 28 : 0 }}
+                          transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                        />
+                      </motion.button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Start New Period Button */}
+                {canStartNewPeriod && (
+                  <motion.button
+                    onClick={handleStartNewPeriod}
+                    disabled={isPaying}
+                    className="col-span-1 sm:col-span-2 md:col-span-3 lg:col-span-4 flex justify-center items-center px-5 py-4 rounded-full bg-gradient-to-r from-[#10b981] to-[#059669] hover:from-[#059669] hover:to-[#047857] text-white font-semibold text-lg transition-colors border border-green-600 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                  >
+                    {isPaying ? (
+                      <>
+                        <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-3"></div>
+                        Starting Period...
+                      </>
+                    ) : (
+                      <>
+                        <Play className="mr-3" size={20} />
+                        Start New Period ({defaultPaymentAmount} ETH)
+                      </>
+                    )}
+                  </motion.button>
+                )}
+
+                {/* Upgrade Capacity Card */}
+                <div className="col-span-1 sm:col-span-2 md:col-span-3 lg:col-span-4">
+                  <div className={`bg-muted/50 rounded-xl p-4 border ${
+                    isCapacityNearFull ? 'border-[#eeb446]/50 bg-[#eeb446]/5' : 'border-[hsl(var(--foreground))]/10'
+                  }`}>
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-start gap-3 flex-1">
+                        <div className={`p-2.5 rounded-lg ${isCapacityNearFull ? 'bg-[#eeb446]/20' : 'bg-muted'}`}>
+                          <TrendingUp className={`w-5 h-5 ${isCapacityNearFull ? 'text-[#eeb446]' : 'text-muted-foreground'}`} />
+                        </div>
+                        <div className="flex-1">
+                          <h3 className="font-semibold flex items-center gap-2">
+                            Upgrade Capacity
+                            {isCapacityNearFull && (
+                              <span className="text-xs px-2 py-0.5 bg-[#eeb446]/20 text-[#eeb446] rounded-full font-medium">
+                                Recommended
+                              </span>
                             )}
-                          </div>
+                          </h3>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            Current: {maxCapacity} | Next: {nextCapacityTier}
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Cost: <span className="font-semibold text-[#4f7a97]">
+                              {formatEther(capacityUpgradeCost)} ETH
+                            </span>
+                          </p>
                         </div>
                       </div>
+
+                      <motion.button
+                        onClick={() => setShowUpgradeModal(true)}
+                        disabled={isPending}
+                        className="px-4 py-2 rounded-lg self-center bg-[#5584a0] hover:bg-[#4f7a97] text-white font-medium text-sm transition-colors shadow-sm disabled:opacity-50"
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                      >
+                        Upgrade
+                      </motion.button>
                     </div>
+                  </div>
+                </div>
 
-                    {/* Upgrade Capacity Card - keep existing */}
-                    <div className="col-span-1 sm:col-span-2 md:col-span-3 lg:col-span-4">
-                      <div className={`bg-muted/50 rounded-xl p-4 border ${
-                        isCapacityNearFull 
-                          ? 'border-[#eeb446]/50 bg-[#eeb446]/5' 
-                          : 'border-[hsl(var(--foreground))]/10'
-                      }`}>
-                        <div className="flex items-start justify-between">
-                          <div className="flex items-start gap-3 flex-1">
-                            <div className={`p-2.5 rounded-lg ${
-                              isCapacityNearFull 
-                                ? 'bg-[#eeb446]/20' 
-                                : 'bg-muted'
-                            }`}>
-                              <TrendingUp className={`w-5 h-5 ${
-                                isCapacityNearFull 
-                                  ? 'text-[#eeb446]' 
-                                  : 'text-muted-foreground'
-                              }`} />
-                            </div>
-                            <div className="flex-1">
-                              <h3 className="font-semibold flex items-center gap-2">
-                                Upgrade Capacity
-                                {isCapacityNearFull && (
-                                  <span className="text-xs px-2 py-0.5 bg-[#eeb446]/20 text-[#eeb446] rounded-full font-medium">
-                                    Recommended
-                                  </span>
-                                )}
-                              </h3>
-                              <p className="text-xs text-muted-foreground mt-0.5">
-                                Current: {maxCapacity} members | Next tier: {nextCapacityTier} members
-                              </p>
-                              <p className="text-xs text-muted-foreground mt-1">
-                                Upgrade cost: <span className="font-semibold text-[#4f7a97]">
-                                  {formatEther(capacityUpgradeCost)} ETH
-                                </span>
-                              </p>
-                            </div>
-                          </div>
-
-                          <motion.button
-                            onClick={() => setShowUpgradeModal(true)}
-                            disabled={isPending}
-                            className="px-4 py-2 rounded-lg self-center bg-[#5584a0] hover:bg-[#4f7a97] text-white font-medium text-sm transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                            whileHover={{ scale: 1.05 }}
-                            whileTap={{ scale: 0.95 }}
-                          >
-                            Upgrade
-                          </motion.button>
-                        </div>
-
-                        {isCapacityNearFull && (
-                          <div className="mt-4 pt-4 border-t border-[#eeb446]/20">
-                            <div className="flex items-start gap-2 text-xs text-[#5c6c74] bg-[#eeb446]/10 border border-[#eeb446]/20 rounded-lg p-3">
-                              <AlertCircle className="w-4 h-4 text-[#eeb446] shrink-0 mt-0.5" />
-                              <p>
-                                {isCapacityFull 
-                                  ? 'Your group has reached maximum capacity. Upgrade now to accept new members.'
-                                  : 'Your group is near capacity. Consider upgrading to avoid reaching the limit.'
-                                }
-                              </p>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </>
-                )}
-                
-                {/* Member controls */}
-                {isMember && (
+                {/* Draw Winner Button */}
+                {isPeriodOngoing && (
                   <motion.button
-                    onClick={() => setShowPaymentModal(true)}
-                    className="flex grow justify-center px-5 py-3 rounded-full bg-green-600 hover:bg-green-700 text-white font-medium text-md transition-colors border border-green-700 shadow-sm hover:shadow-md"
+                    onClick={handleOpenDrawWinner}
+                    className="flex grow justify-center px-5 py-3 rounded-full bg-gradient-to-r from-[#eeb446] to-[#d9a33f] text-white font-medium text-md hover:from-[#d9a33f] hover:to-[#c9933f] transition-colors border border-[#eeb446]/20 shadow-sm hover:shadow-md"
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
                   >
-                    <Wallet className="me-2 font-thin px-0.5" /> 
-                    Pay {defaultPaymentAmount} ETH
+                    <Trophy className="me-2 font-thin px-0.5" /> Draw Winner
                   </motion.button>
                 )}
-                
-                {/* Join Button */}
+              </>
+            )}
+            
+            {/* Member controls */}
+            {isMember && isPeriodOngoing && (
+              <motion.button
+                onClick={() => setShowPaymentModal(true)}
+                className="flex grow justify-center px-5 py-3 rounded-full bg-green-600 hover:bg-green-700 text-white font-medium text-md transition-colors border border-green-700 shadow-sm hover:shadow-md"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+              >
+                <Wallet className="me-2 font-thin px-0.5" /> 
+                Pay {defaultPaymentAmount} ETH
+              </motion.button>
+            )}
+            
+            {/* Join Button */}
+            {isConnected && !isMember && (
+              <motion.button
+                onClick={handleJoinGroup}
+                className="flex flex-initial justify-center px-5 py-3 rounded-full bg-primary text-primary-foreground font-medium text-md hover:bg-primary/90 transition-colors border border-[hsl(var(--foreground))]/10 shadow-sm hover:shadow-md"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+              >
+                <UsersRound className="me-2 font-thin px-0.5" /> Join Group
+              </motion.button>
+            )}
+            
+            {/* More member buttons */}
+            {isMember && (
+              <>
                 <motion.button
-                  onClick={handleJoinGroup}
-                  className={
-                    (isConnected && !isMember
-                      ? ""
-                      : "text-[hsl(var(--foreground))]/25 bg-gray-600/20 ") +
-                    "flex flex-initial justify-center px-5 py-3 rounded-full bg-primary text-primary-foreground font-medium text-md hover:bg-primary/90 transition-colors border border-[hsl(var(--foreground))]/10 shadow-sm hover:shadow-md "
-                  }
-                  whileHover={isConnected && !isMember ? { scale: 1.05 } : {}}
+                  onClick={() => router.push(`/group/${id}/members`)}
+                  className="flex grow justify-center px-5 py-3 rounded-full bg-primary text-primary-foreground font-medium text-md hover:bg-primary/90 transition-colors border border-[hsl(var(--foreground))]/10 shadow-sm hover:shadow-md"
+                  whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
-                  disabled={!isConnected || isMember}
                 >
-                  <UsersRound className="me-2 font-thin px-0.5" /> Join Group
+                  <List className="me-2 font-thin px-0.5" /> View Members
                 </motion.button>
-                
-                {/* More member buttons */}
-                {isMember && (
-                  <>
-                    <motion.button
-                      onClick={() => router.push(`/group/${id}/members`)}
-                      className="flex grow justify-center px-5 py-3 rounded-full bg-primary text-primary-foreground font-medium text-md hover:bg-primary/90 transition-colors border border-[hsl(var(--foreground))]/10 shadow-sm hover:shadow-md"
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                    >
-                      <List className="me-2 font-thin px-0.5" /> View Members
-                    </motion.button>
 
-                    {isCoordinator && (
-                      <motion.button
-                        onClick={handleOpenDrawWinner}
-                        className="flex grow justify-center px-5 py-3 rounded-full bg-gradient-to-r from-[#eeb446] to-[#d9a33f] text-white font-medium text-md hover:from-[#d9a33f] hover:to-[#c9933f] transition-colors border border-[#eeb446]/20 shadow-sm hover:shadow-md"
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
-                      >
-                        <Trophy className="me-2 font-thin px-0.5" /> Draw Winner
-                      </motion.button>
+                {!group.settings.openJoinEnabled && (
+                  <motion.button
+                    onClick={() => router.push(`/group/${id}/proposals`)}
+                    className="relative flex grow justify-center px-5 py-3 rounded-full bg-primary text-primary-foreground font-medium text-md hover:bg-primary/90 transition-colors border border-[hsl(var(--foreground))]/10 shadow-sm hover:shadow-md"
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                  >
+                    <Bell className="me-2 font-thin px-0.5" /> 
+                    View Proposals
+                    {pendingProposalsCount > 0 && (
+                      <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center">
+                        {pendingProposalsCount}
+                      </span>
                     )}
-
-                    {!group.settings.openJoinEnabled && (
-                      <motion.button
-                        onClick={() => router.push(`/group/${id}/proposals`)}
-                        className="relative flex grow justify-center px-5 py-3 rounded-full bg-primary text-primary-foreground font-medium text-md hover:bg-primary/90 transition-colors border border-[hsl(var(--foreground))]/10 shadow-sm hover:shadow-md"
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
-                      >
-                        <Bell className="me-2 font-thin px-0.5" /> 
-                        View Proposals
-                        {pendingProposalsCount > 0 && (
-                          <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center">
-                            {pendingProposalsCount}
-                          </span>
-                        )}
-                      </motion.button>
-                    )}
-
-                    <motion.button
-                      onClick={() => router.push(`/group/${id}/create-proposal`)}
-                      className="flex grow justify-center px-5 py-3 rounded-full bg-[#eeb446] hover:bg-[#d9a33f] text-white font-medium text-md transition-colors border border-[hsl(var(--foreground))]/10 shadow-sm hover:shadow-md"
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                    >
-                      <Plus className="me-2 font-thin px-0.5" /> Create Proposal
-                    </motion.button>
-                  </>
+                  </motion.button>
                 )}
-                
-                {/* Other buttons */}
-                <Link
-                  className="flex flex-initial"
-                  target="_blank"
-                  href={group.settings.telegramGroupUrl}
-                  rel="noopener noreferrer"
+
+                <motion.button
+                  onClick={() => router.push(`/group/${id}/create-proposal`)}
+                  className="flex grow justify-center px-5 py-3 rounded-full bg-[#eeb446] hover:bg-[#d9a33f] text-white font-medium text-md transition-colors border border-[hsl(var(--foreground))]/10 shadow-sm hover:shadow-md"
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
                 >
-                  <motion.button
-                    className="flex grow justify-center px-5 py-3 rounded-full bg-primary text-primary-foreground font-medium text-md hover:bg-primary/90 transition-colors border border-[hsl(var(--foreground))]/10 shadow-sm hover:shadow-md"
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                  >
-                    <MessageCircleMore className="me-2 font-thin px-0.5" /> Join
-                    Chat
-                  </motion.button>
-                </Link>
+                  <Plus className="me-2 font-thin px-0.5" /> Create Proposal
+                </motion.button>
+              </>
+            )}
+            
+            {/* Join Chat Button */}
+            <Link
+              className="flex flex-initial"
+              target="_blank"
+              href={group.settings.telegramGroupUrl}
+              rel="noopener noreferrer"
+            >
+              <motion.button
+                className="flex grow justify-center px-5 py-3 rounded-full bg-primary text-primary-foreground font-medium text-md hover:bg-primary/90 transition-colors border border-[hsl(var(--foreground))]/10 shadow-sm hover:shadow-md"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+              >
+                <MessageCircleMore className="me-2 font-thin px-0.5" /> Join Chat
+              </motion.button>
+            </Link>
 
-                {/* Leave Group Button - ONLY for non-coordinator members */}
-                {isMember && !isCoordinator && (
-                  <motion.button
-                    onClick={() => setShowLeaveModal(true)}
-                    className="flex flex-initial justify-center items-center px-5 py-3 rounded-full bg-red-600 hover:bg-red-700 text-white font-medium text-md transition-colors border border-red-700 shadow-sm hover:shadow-md"
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                  >
-                    <LogOut className="me-2" size={18} /> 
-                    <span>Leave Group</span>
-                  </motion.button>
-                )}
-              </div>
-            </div>
+            {/* Leave Group Button */}
+            {isMember && !isCoordinator && (
+              <motion.button
+                onClick={() => setShowLeaveModal(true)}
+                className="flex flex-initial justify-center items-center px-5 py-3 rounded-full bg-red-600 hover:bg-red-700 text-white font-medium text-md transition-colors border border-red-700 shadow-sm hover:shadow-md"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+              >
+                <LogOut className="me-2" size={18} /> 
+                <span>Leave Group</span>
+              </motion.button>
+            )}
           </div>
         </motion.div>
         
-        {/* Verification Button for coordinator */}
-        {/* !isVerified && isCoordinator && (
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4 }}
-            className="bg-card rounded-xl border border-[hsl(var(--foreground))]/20 p-6 shadow-sm mt-6 justify-center justify-items-center"
-          >
-            <GroupVerificationStatus
-              groupAddress={id as string}
-              title={group.settings.title}
-              telegramUrl={group.settings.telegramGroupUrl}
-              coordinator={group.settings.coordinator.walletAddress}
-              commission={group.settings.coordinatorCommissionPercentage}
-              contribution={group.settings.contributionAmountInWei}
-              prize={group.settings.prizePercentage}
-            />
-          </motion.div>
-        )*/}
+        
       </main>
     </div>
   );
