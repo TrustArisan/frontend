@@ -265,7 +265,7 @@ export default function CreateProposalPage() {
                   <motion.button
                     key={option.type}
                     onClick={() => setSelectedType(option.type)}
-                    className="bg-card rounded-xl border border-[#4f7a97]/10 p-6 text-left hover:shadow-lg transition-all"
+                    className="bg-card rounded-xl border border-[hsl(var(--foreground))]/20 p-6 text-left hover:shadow-lg transition-all"
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
                   >
