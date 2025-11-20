@@ -892,7 +892,9 @@ export default function GroupDetailPage() {
       </AnimatePresence>
 
       <main className="container mx-auto px-4 py-8">
-        <motion.button
+        {/* Reload & Theme Toggle - Above Card */}
+        <div className="flex justify-between items-center gap-2 mb-4">
+          <motion.button
           onClick={() => router.push("/")}
           className="flex pe-8 py-3 items-center rounded-full bg-primary text-primary-foreground font-medium text-md hover:bg-primary/90 transition-colors"
           whileHover={{ x: -4 }}
@@ -901,6 +903,23 @@ export default function GroupDetailPage() {
           <ChevronLeft size={18} className="me-4" />
           Back to groups
         </motion.button>
+        <div className="flex grow gap-2 justify-end">
+          <motion.button
+            type="button"
+            onClick={reloadData}
+            className="p-2.5 px-4 rounded-full text-[black] dark:text-[#648196] shadow-sm border border-[#5584a0]/20"
+            whileHover={{ scale: 1.05, rotate: 180 }}
+            whileTap={{ scale: 0.95 }}
+            title="Reload Data"
+          >
+            <RotateCcw size={20} />
+          </motion.button>
+          
+          <div className="p-0.5 rounded-lg">
+            <ThemeToggle unhideText={false} />
+          </div>
+        </div>
+        </div>
 
         {/* Pending Proposals Banner - Existing */}
         {pendingProposalsCount > 0 && isMember && !group.settings.openJoinEnabled && (
@@ -935,24 +954,6 @@ export default function GroupDetailPage() {
             </div>
           </motion.div>
         )}
-
-        {/* Reload & Theme Toggle - Above Card */}
-        <div className="flex justify-end items-center gap-2 mb-4 mt-4">
-          <motion.button
-            type="button"
-            onClick={reloadData}
-            className="p-2.5 rounded-3xl text-[black] dark:text-[#648196] shadow-sm border border-[#5584a0]/20"
-            whileHover={{ scale: 1.05, rotate: 180 }}
-            whileTap={{ scale: 0.95 }}
-            title="Reload Data"
-          >
-            <RotateCcw size={20} />
-          </motion.button>
-          
-          <div className="p-0.5 rounded-lg">
-            <ThemeToggle unhideText={false} />
-          </div>
-        </div>
 
         {/* Group Info Card - Existing */}
         <motion.div
