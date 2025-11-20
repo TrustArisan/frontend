@@ -43,6 +43,7 @@ import { Avatar } from "@/app/components/Avatar";
 import Link from "next/link";
 import ThemeToggle from "@/app/components/ThemeToggle";
 import Loading from "@/app/components/Loading";
+import { GroupVerificationStatus } from "@/app/components/GroupVerificationStatus";
 
 interface Period {
   startedAt: bigint;
@@ -73,6 +74,7 @@ export default function GroupDetailPage() {
   const [nextCapacityTier, setNextCapacityTier] = useState<number>(0);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [pendingProposalsCount, setPendingProposalsCount] = useState<number>(0);
+  const [isVerified, setIsVerified] = useState<boolean>(false);
   
   // State untuk Join Group Modal
   const [showJoinModal, setShowJoinModal] = useState(false);
@@ -124,6 +126,22 @@ export default function GroupDetailPage() {
     await balanceRefetch();
     if (showDrawWinnerModal) {
       await fetchDrawWinnerData();
+    }
+  }
+
+  async function checkVerificationStatus() {
+    try {
+      const response = await fetch('/api/check-verification', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ address: groupAddress }),
+      });
+
+      const result = await response.json();
+      setIsVerified(true);
+    } catch (error) {
+      console.error('Error checking verification:', error);
+      setIsVerified(false);
     }
   }
 
@@ -497,6 +515,7 @@ export default function GroupDetailPage() {
   useEffect(() => {
     fetchGroupDetails();
     balanceRefetch();
+    checkVerificationStatus();
   }, [publicClient, id]);
 
   useEffect(() => {
@@ -1242,6 +1261,19 @@ export default function GroupDetailPage() {
                       </div>
                     </div>
                   </>
+                )}
+
+                {/* Verification Button for coordinator */}
+                {!isVerified && isCoordinator && (
+                  <GroupVerificationStatus
+                    groupAddress={id as string}
+                    title={group.settings.title}
+                    telegramUrl={group.settings.telegramGroupUrl}
+                    coordinator={group.settings.coordinator.walletAddress}
+                    commission={group.settings.coordinatorCommissionPercentage}
+                    contribution={group.settings.contributionAmountInWei}
+                    prize={group.settings.prizePercentage}
+                  />
                 )}
                 
                 {/* Member controls */}
