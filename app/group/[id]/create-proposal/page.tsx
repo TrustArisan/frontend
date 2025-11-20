@@ -18,6 +18,7 @@ import {
   Users,
   Send,
   AlertCircle,
+  UserX,
 } from "lucide-react";
 import ThemeToggle from "@/app/components/ThemeToggle";
 
@@ -29,6 +30,7 @@ enum ProposalType {
   NEW_CONTRIBUTION = "NEW_CONTRIBUTION",
   NEW_PRIZE = "NEW_PRIZE",
   NEW_MEMBER = "NEW_MEMBER",
+  KICK_MEMBER = "KICK_MEMBER",
   TRANSFER = "TRANSFER",
 }
 
@@ -83,11 +85,18 @@ const PROPOSAL_OPTIONS = [
     color: "emerald",
   },
   {
+    type: ProposalType.KICK_MEMBER,
+    name: "Kick Member",
+    description: "Propose to remove a member from group",
+    icon: UserX,
+    color: "red",
+  },
+  {
     type: ProposalType.TRANSFER,
     name: "Transfer Funds",
     description: "Propose transferring group funds",
     icon: Send,
-    color: "red",
+    color: "pink",
   },
 ];
 
@@ -175,6 +184,15 @@ export default function CreateProposalPage() {
           });
           break;
 
+        case ProposalType.KICK_MEMBER:
+          await writeContractAsync({
+            address: groupAddress,
+            abi: GROUP_ABI,
+            functionName: "proposeKickMember",
+            args: [formData.kickMemberAddress],
+          });
+          break;
+
         case ProposalType.TRANSFER:
           await writeContractAsync({
             address: groupAddress,
@@ -190,7 +208,6 @@ export default function CreateProposalPage() {
 
       console.log("Proposal created successfully");
       
-      // Redirect to proposals page
       setTimeout(() => {
         router.push(`/group/${id}/proposals`);
       }, 2000);
@@ -411,6 +428,28 @@ export default function CreateProposalPage() {
                     />
                   </div>
                 </>
+              )}
+
+              {selectedType === ProposalType.KICK_MEMBER && (
+                <div>
+                  <label className="block text-sm font-medium mb-2">Member Address to Kick</label>
+                  <input
+                    type="text"
+                    required
+                    value={formData.kickMemberAddress || ""}
+                    onChange={(e) => setFormData({ ...formData, kickMemberAddress: e.target.value })}
+                    className="w-full px-4 py-2.5 bg-background border border-[#648196]/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#5584a0]"
+                    placeholder="0x..."
+                  />
+                  <div className="bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-lg p-3 mt-3">
+                    <div className="flex items-start gap-2">
+                      <AlertCircle className="w-4 h-4 text-red-600 dark:text-red-400 shrink-0 mt-0.5" />
+                      <p className="text-xs text-red-900 dark:text-red-300">
+                        <strong>Warning:</strong> You cannot kick yourself or the coordinator. This action requires majority approval.
+                      </p>
+                    </div>
+                  </div>
+                </div>
               )}
 
               {selectedType === ProposalType.TRANSFER && (
