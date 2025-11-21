@@ -1490,7 +1490,7 @@ export default function GroupDetailPage() {
                   <List className="me-2 font-thin px-0.5" /> View Members
                 </motion.button>
 
-                {!group.settings.openJoinEnabled && (
+                {pendingProposalsCount > 0 && (
                   <motion.button
                     onClick={() => router.push(`/group/${id}/proposals`)}
                     className="relative flex grow justify-center px-5 py-3 rounded-full bg-primary text-primary-foreground font-medium text-md hover:bg-primary/90 transition-colors border border-[hsl(var(--foreground))]/10 shadow-sm hover:shadow-md"
