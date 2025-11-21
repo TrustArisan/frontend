@@ -10,6 +10,7 @@ import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { ChevronLeft, Users, Shield, User, Wallet, CheckCircle, XCircle } from 'lucide-react';
 import Loading from '@/app/components/Loading';
+import ThemeToggle from '@/app/components/ThemeToggle';
 
 interface Member {
   walletAddress: Address;
@@ -250,6 +251,10 @@ export default function MembersPage() {
           </div>
         </motion.div>
       </main>
+
+      <div className="fixed bottom-4 right-4 z-50">
+        <ThemeToggle />
+      </div>
     </div>
   );
 }

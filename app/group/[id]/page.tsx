@@ -45,7 +45,6 @@ import { Avatar } from "@/app/components/Avatar";
 import Link from "next/link";
 import ThemeToggle from "@/app/components/ThemeToggle";
 import Loading from "@/app/components/Loading";
-import { GroupVerificationStatus } from "@/app/components/GroupVerificationStatus";
 
 interface Period {
   startedAt: bigint;
@@ -76,7 +75,6 @@ export default function GroupDetailPage() {
   const [nextCapacityTier, setNextCapacityTier] = useState<number>(0);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [pendingProposalsCount, setPendingProposalsCount] = useState<number>(0);
-  const [isVerified, setIsVerified] = useState<boolean>(false);
   
   // State untuk Join Group Modal
   const [showJoinModal, setShowJoinModal] = useState(false);
@@ -132,27 +130,6 @@ export default function GroupDetailPage() {
     await balanceRefetch();
     if (showDrawWinnerModal) {
       await fetchDrawWinnerData();
-    }
-  }
-
-  async function checkVerificationStatus() {
-    try {
-      const response = await fetch('/api/check-verification', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ address: groupAddress }),
-      });
-
-      const result = await response.json();
-
-      if (result.isVerified) {
-        setIsVerified(true);
-      } else {
-        setIsVerified(false);
-      }
-    } catch (error) {
-      console.error('Error checking verification:', error);
-      setIsVerified(false);
     }
   }
 
@@ -681,7 +658,6 @@ export default function GroupDetailPage() {
   useEffect(() => {
     fetchGroupDetails();
     balanceRefetch();
-    checkVerificationStatus();
   }, [publicClient, id]);
 
   useEffect(() => {
@@ -1215,7 +1191,7 @@ export default function GroupDetailPage() {
         </div>
 
         {/* Pending Proposals Banner */}
-        {pendingProposalsCount > 0 && isMember && !group.settings.openJoinEnabled && (
+        {pendingProposalsCount > 0 && isMember && (
           <motion.div
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -1397,29 +1373,6 @@ export default function GroupDetailPage() {
                   </div>
                 </div>
 
-                {/* Start New Period Button */}
-                {canStartNewPeriod && (
-                  <motion.button
-                    onClick={handleStartNewPeriod}
-                    disabled={isPaying}
-                    className="col-span-1 sm:col-span-2 md:col-span-3 lg:col-span-4 flex justify-center items-center px-5 py-4 rounded-full bg-gradient-to-r from-[#10b981] to-[#059669] hover:from-[#059669] hover:to-[#047857] text-white font-semibold text-lg transition-colors border border-green-600 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                  >
-                    {isPaying ? (
-                      <>
-                        <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-3"></div>
-                        Starting Period...
-                      </>
-                    ) : (
-                      <>
-                        <Play className="mr-3" size={20} />
-                        Start New Period ({defaultPaymentAmount} ETH)
-                      </>
-                    )}
-                  </motion.button>
-                )}
-
                 {/* Upgrade Capacity Card */}
                 <div className="col-span-1 sm:col-span-2 md:col-span-3 lg:col-span-4">
                   <div className={`bg-muted/50 rounded-xl p-4 border ${
@@ -1462,6 +1415,29 @@ export default function GroupDetailPage() {
                     </div>
                   </div>
                 </div>
+
+                {/* Start New Period Button */}
+                {canStartNewPeriod && (
+                  <motion.button
+                    onClick={handleStartNewPeriod}
+                    disabled={isPaying}
+                    className="col-span-1 sm:col-span-2 md:col-span-3 lg:col-span-4 flex justify-center items-center px-5 py-4 rounded-full bg-gradient-to-r from-[#10b981] to-[#059669] hover:from-[#059669] hover:to-[#047857] text-white font-semibold text-lg transition-colors border border-green-600 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                  >
+                    {isPaying ? (
+                      <>
+                        <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-3"></div>
+                        Starting Period...
+                      </>
+                    ) : (
+                      <>
+                        <Play className="mr-3" size={20} />
+                        Start New Period ({defaultPaymentAmount} ETH)
+                      </>
+                    )}
+                  </motion.button>
+                )}
 
                 {/* Draw Winner Button */}
                 {isPeriodOngoing && (

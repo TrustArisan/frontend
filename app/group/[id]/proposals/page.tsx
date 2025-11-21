@@ -29,6 +29,7 @@ import {
   HandCoins,
   Send,
   Filter,
+  RotateCcw
 } from "lucide-react";
 import ThemeToggle from "@/app/components/ThemeToggle";
 import Loading from "@/app/components/Loading";
@@ -499,17 +500,33 @@ export default function UniversalProposalsPage() {
             Back to Group
           </motion.button>
 
-          {isMember && (
+          <div className="flex grow justify-end gap-2">
             <motion.button
-              onClick={() => router.push(`/group/${id}/create-proposal`)}
-              className="flex items-center gap-2 px-6 py-3 rounded-full bg-[#5584a0] hover:bg-[#4f7a97] text-white font-medium text-md transition-colors shadow-md"
-              whileHover={{ scale: 1.02 }}
+              type="button"
+              onClick={() => fetchProposals()}
+              className="p-3 rounded-full shadow-sm border border-[#5584a0]/20 dark:border-[hsl(var(--foreground))]/20"
+              whileHover={{ scale: 1.05, rotate: 180 }}
               whileTap={{ scale: 0.95 }}
+              title="Reload Data"
             >
-              <Vote size={18} />
-              Create Proposal
+              <RotateCcw size={20} />
             </motion.button>
-          )}
+
+            {isMember && (
+              <motion.button
+                onClick={() => router.push(`/group/${id}/create-proposal`)}
+                className="flex items-center gap-2 sm:px-6 px-3.5 sm:py-3 rounded-full bg-[#5584a0] hover:bg-[#4f7a97] text-white font-medium text-md transition-colors shadow-md"
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.95 }}
+              >
+                <Vote size={18} />
+                <span className="sm:inline hidden">
+                  Create Proposal
+                </span>
+              </motion.button>
+            )}
+          </div>
+
         </div>
 
         <motion.div
@@ -748,7 +765,7 @@ export default function UniversalProposalsPage() {
       </main>
 
       <div className="fixed bottom-4 right-4 z-50">
-        <ThemeToggle unhideText={true} />
+        <ThemeToggle />
       </div>
     </div>
   );
